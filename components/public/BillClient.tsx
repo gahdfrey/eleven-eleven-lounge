@@ -26,7 +26,7 @@ type PublicBill = {
 };
 
 export function BillClient({ token, menu }: { token: string; menu: MenuCategory[] }) {
-  const { data, error, mutate } = useSWR<{ bill: PublicBill }>(`/api/public/bills/${token}`, jsonFetcher, { refreshInterval: 5000 });
+  const { data, error, mutate } = useSWR<{ bill: PublicBill }>(`/api/public/bills/${token}`, jsonFetcher, { refreshInterval: 2500 });
   const [ordering, setOrdering] = useState(false);
 
   if (error) return <EmptyState title="We couldn't find this bill" description="Please scan the QR code on your table again." />;

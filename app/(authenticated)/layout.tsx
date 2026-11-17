@@ -4,6 +4,8 @@ import { isManager, requirePageUser } from "@/lib/authz";
 import { NavLinks, type NavSection } from "@/components/app/NavLinks";
 import { MobileNav } from "@/components/app/MobileNav";
 import { NotificationBell } from "@/components/app/NotificationBell";
+import { LiveRefresh } from "@/components/LiveRefresh";
+import { changeFingerprint } from "@/lib/live";
 import { Logo } from "@/components/ui";
 import { LogOut } from "lucide-react";
 
@@ -12,6 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const user = await requirePageUser();
   const manager = isManager(user);
+  const liveVersion = await changeFingerprint("staff");
 
   const sections: NavSection[] = [
     {
@@ -57,6 +60,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
 
   return (
     <div className="flex min-h-screen">
+      <LiveRefresh version={liveVersion} />
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-surface p-4 lg:flex">
         <Link href="/dashboard" className="mb-8 px-3 pt-2"><Logo /></Link>
         <div className="flex-1 overflow-y-auto"><NavLinks sections={sections} /></div>

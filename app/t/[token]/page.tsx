@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { loungeTables } from "@/lib/db/schema";
 import { getActiveStaff, getMenu } from "@/lib/menu";
 import { PublicHeader } from "@/components/public/PublicHeader";
+import { LiveRefresh } from "@/components/LiveRefresh";
+import { changeFingerprint } from "@/lib/live";
 import { TableOrder } from "@/components/public/TableOrder";
 import { EmptyState } from "@/components/ui";
 
@@ -33,6 +35,7 @@ export default async function TablePage({ params }: { params: Promise<{ token: s
   return (
     <>
       <PublicHeader />
+      <LiveRefresh version={await changeFingerprint("public")} endpoint="/api/public/live" intervalMs={4000} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted">You&apos;re at</p>
         <h1 className="mb-6 mt-1 text-3xl font-semibold tracking-tight text-white">{table.name}</h1>

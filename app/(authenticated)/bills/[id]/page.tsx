@@ -12,7 +12,6 @@ import { qrSvg } from "@/lib/qr";
 import { BillStatus, PAYMENT_LABELS } from "@/components/StatusBadge";
 import { Card } from "@/components/ui";
 import { BillActions } from "@/components/app/BillActions";
-import { AutoRefresh } from "@/components/app/AutoRefresh";
 
 export const metadata: Metadata = { title: "Bill" };
 
@@ -31,7 +30,6 @@ export default async function BillDetailPage({ params, searchParams }: { params:
 
   return (
     <>
-      {bill.status === "open" && <AutoRefresh />}
       <Link href="/bills" className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-white"><ChevronLeft size={16} /> Bills</Link>
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="order-2 lg:order-1">

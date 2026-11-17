@@ -32,7 +32,7 @@ The core problem is staff theft: money not remitted and stock not accounted for.
 
 - **Customers (no login)** scan a table QR (`/t/<qrToken>`), browse the menu, pick the staff member serving them, and order. This opens a **bill** owned by that staff member; the customer follows it live at `/bill/<accessToken>` and can order more. Public pages: `/`, `/menu`, `/events`.
 - **Staff** can also raise orders themselves at `/orders/new` (walk-up customers, no QR); the bill is theirs and the order is accepted immediately.
-- **Staff** get a notification (polling + chime + optional browser notification), accept or decline the order on `/orders`, and close the bill with a payment method (cash / transfer / POS) on `/bills/<id>`.
+- **Staff** get a notification (polling + chime + optional browser notification), accept or decline the order on `/orders` (staff see only their own; managers/admins see everyone's by default, `?scope=mine` narrows it, and today's handled orders stay listed), and close the bill with a payment method (cash / transfer / POS) on `/bills/<id>`.
 - **Managers/admins** manage menu, stock, tables/QR, events, and see `/admin/reports`: per-staff sales, payment split, voids, open bills, and **cash outstanding** (cash collected minus remittances recorded).
 - **Users**: admins create accounts at `/admin/users`. Usernames are sequential `11:11/<staffNo>`; new accounts and resets get `Password1` (`DEFAULT_PASSWORD` in `lib/users.ts`) and must change it on first login (`mustChangePassword` → `/change-password`). Public `/signup` only works while there are zero users (owner bootstrap).
 

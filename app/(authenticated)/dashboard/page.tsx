@@ -80,7 +80,7 @@ export default async function DashboardPage() {
               <h2 className="font-semibold text-white">Pending orders</h2>
               <Badge tone={pending ? "warning" : "neutral"}>{pending}</Badge>
             </div>
-            <Link href="/orders?scope=all" className="text-sm text-accent hover:underline">View all live orders →</Link>
+            <Link href="/orders" className="text-sm text-accent hover:underline">View all live orders →</Link>
           </Card>
           <Card className="p-4">
             <h2 className="mb-3 font-semibold text-white">Low stock</h2>

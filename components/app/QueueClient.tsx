@@ -8,15 +8,17 @@ import { api, jsonFetcher } from "@/lib/client";
 import { formatNaira } from "@/lib/money";
 import { timeAgo } from "@/lib/dates";
 import { Button, Card, EmptyState } from "../ui";
+import { OrderStatus } from "../StatusBadge";
 import { ReasonDialog } from "./ReasonDialog";
 
 type Queue = {
   pending: { id: number; billId: number; note: string | null; createdAt: string; customerName: string | null; tableName: string | null; staffName: string; total: number; items: { id: number; name: string; qty: number; unitPrice: number }[] }[];
   openBills: { id: number; customerName: string | null; createdAt: string; tableName: string | null; staffName: string; total: number }[];
+  recent: { id: number; billId: number; status: string; source: string; createdAt: string; customerName: string | null; tableName: string | null; staffName: string; summary: string; total: number }[];
 };
 
 export function QueueClient({ scopeAll }: { scopeAll: boolean }) {
-  const { data, mutate } = useSWR<Queue>(`/api/queue${scopeAll ? "?scope=all" : ""}`, jsonFetcher, { refreshInterval: 5000 });
+  const { data, mutate } = useSWR<Queue>(`/api/queue${scopeAll ? "" : "?scope=mine"}`, jsonFetcher, { refreshInterval: 5000 });
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [rejecting, setRejecting] = useState<number | null>(null);
@@ -87,6 +89,33 @@ export function QueueClient({ scopeAll }: { scopeAll: boolean }) {
                     <span className="text-xs text-muted">#{b.id} · {timeAgo(b.createdAt)}{scopeAll ? ` · ${b.staffName}` : ""}</span>
                   </span>
                   <span className="tabular-nums text-zinc-200">{formatNaira(b.total)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="xl:col-span-2">
+        <h2 className="mb-3 font-semibold text-white">Today&apos;s orders</h2>
+        {data.recent.length === 0 ? (
+          <p className="text-sm text-muted">Accepted, served, declined and voided orders from today appear here.</p>
+        ) : (
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+            {data.recent.map((o) => (
+              <li key={o.id}>
+                <Link href={`/bills/${o.billId}`} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-surface px-4 py-3 hover:bg-raised">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm text-white">{o.summary || "—"}</span>
+                    <span className="text-xs text-muted">
+                      {o.tableName ?? "Walk-in"}{o.customerName ? ` · ${o.customerName}` : ""} · Bill #{o.billId} · {timeAgo(o.createdAt)}
+                      {scopeAll ? ` · ${o.staffName}` : ""} · {o.source === "customer" ? "QR" : "staff"}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <OrderStatus status={o.status} />
+                    <span className="w-20 text-right text-sm tabular-nums text-zinc-200">{formatNaira(o.total)}</span>
+                  </span>
                 </Link>
               </li>
             ))}

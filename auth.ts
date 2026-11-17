@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
-import { getUserByEmail, verifyPassword } from "./lib/auth";
+import { getUserForLogin, verifyPassword } from "./lib/users";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -9,21 +9,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Credentials({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        identifier: { label: "Username or email", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = String(credentials?.email ?? "").trim().toLowerCase();
+        const identifier = String(credentials?.identifier ?? "").trim();
         const password = String(credentials?.password ?? "");
-        if (!email || !password) return null;
+        if (!identifier || !password) return null;
 
-        const user = await getUserByEmail(email);
+        const user = await getUserForLogin(identifier);
         if (!user) return null;
         if (!(await verifyPassword(password, user.password))) return null;
 
         return {
           id: String(user.id),
           email: user.email,
+          username: user.username,
           firstname: user.firstname,
           lastname: user.lastname,
           role: user.role,

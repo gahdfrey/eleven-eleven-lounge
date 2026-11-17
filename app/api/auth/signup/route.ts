@@ -1,28 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createUser, getUserByEmail, signupSchema } from "@/lib/auth";
+import { AppError, handle, parseBody } from "@/lib/api";
+import { countUsers, createUserWithSequence, PASSWORD_RULES } from "@/lib/users";
 
-export async function POST(request: NextRequest) {
-  try {
-    const parsed = signupSchema.safeParse(await request.json());
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Validation failed", errors: z.flattenError(parsed.error).fieldErrors },
-        { status: 400 },
-      );
-    }
+const schema = z
+  .object({
+    firstname: z.string().trim().min(2, "First name must be at least 2 characters"),
+    lastname: z.string().trim().min(2, "Last name must be at least 2 characters"),
+    email: z.email("Valid email is required").trim().toLowerCase(),
+    password: z.string().regex(PASSWORD_RULES.regex, PASSWORD_RULES.message),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, { path: ["confirmPassword"], message: "Passwords do not match" });
 
-    if (await getUserByEmail(parsed.data.email)) {
-      return NextResponse.json(
-        { error: "Validation failed", errors: { email: ["Email is already registered"] } },
-        { status: 409 },
-      );
-    }
-
-    const user = await createUser(parsed.data);
-    return NextResponse.json({ message: "Account created", user }, { status: 201 });
-  } catch (error) {
-    console.error("Signup error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
+/** One-time owner setup: only works while there are no accounts. Everyone else is created by an admin. */
+export const POST = handle(async (request: Request) => {
+  if ((await countUsers()) > 0) throw new AppError("Sign-up is closed. Ask an admin to create your account.", 403);
+  const { data, error } = await parseBody(request, schema);
+  if (error) return error;
+  const user = await createUserWithSequence({ ...data, role: "admin", mustChangePassword: false });
+  return NextResponse.json({ user }, { status: 201 });
+});

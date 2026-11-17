@@ -26,13 +26,32 @@ No test runner is installed.
 2. Run `npm run db:migrate` locally. `.env` should point at a Neon **dev** branch, never production.
 3. Production builds run `scripts/migrate.mjs` before `next build` (Vercel Preview builds skip it). Never edit a merged migration; add a new one.
 
+## What the app does
+
+The core problem is staff theft: money not remitted and stock not accounted for. Everything is built so every naira and every bottle is tied to one staff member.
+
+- **Customers (no login)** scan a table QR (`/t/<qrToken>`), browse the menu, pick the staff member serving them, and order. This opens a **bill** owned by that staff member; the customer follows it live at `/bill/<accessToken>` and can order more. Public pages: `/`, `/menu`, `/events`.
+- **Staff** can also raise orders themselves at `/orders/new` (walk-up customers, no QR); the bill is theirs and the order is accepted immediately.
+- **Staff** get a notification (polling + chime + optional browser notification), accept or decline the order on `/orders`, and close the bill with a payment method (cash / transfer / POS) on `/bills/<id>`.
+- **Managers/admins** manage menu, stock, tables/QR, events, and see `/admin/reports`: per-staff sales, payment split, voids, open bills, and **cash outstanding** (cash collected minus remittances recorded).
+- **Users**: admins create accounts at `/admin/users`. Usernames are sequential `11:11/<staffNo>`; new accounts and resets get `Password1` (`DEFAULT_PASSWORD` in `lib/users.ts`) and must change it on first login (`mustChangePassword` → `/change-password`). Public `/signup` only works while there are zero users (owner bootstrap).
+
+## Business rules (enforced in `lib/orders.ts` — keep them there)
+
+- Stock is deducted only when an order is accepted (customer orders) or entered (staff orders), atomically with `stock_qty >= qty`, and every change writes a `stock_movements` ledger row. Manual changes go through `lib/inventory.ts#adjustStock`.
+- Staff can act only on their own bills/orders. Only managers can void (with a reason), which returns stock and notifies the staff member.
+- A bill can't be closed with pending orders; once paid it's frozen (`paidAmount` snapshot).
+- Order items snapshot name and unit price. Money is integer **kobo** everywhere (`lib/money.ts`).
+- Dates/report days use Africa/Lagos (`lib/dates.ts`).
+
 ## Architecture
 
-- **DB**: `lib/db/index.ts` exports the singleton `db` (postgres-js, pooled via `globalThis`, `prepare: false` for Neon's pooler). Soft deletes via `deletedAt`; always filter `isNull(table.deletedAt)` in reads.
-- **Auth**: `auth.config.ts` is the edge-safe config used by `proxy.ts` (Next 16's renamed middleware); its `authorized()` callback is the single choke point. `/api/*` is deny-by-default — only `/api/auth/*` and `/api/health` are public. `auth.ts` adds the Credentials provider (DB lookup + bcrypt). JWT sessions, 8h lifetime.
-- **Route handlers**: call `requireAuth()` / `requireAuth(["admin"])` from `lib/authz.ts` and return `a.error` if set. Validate bodies with zod.
-- **Roles**: `users.role` is `"admin" | "staff"`; the first account to sign up becomes admin.
-- **UI**: logged-in pages go under `app/(authenticated)/*` (its layout redirects to `/login` without a session). Client data fetching uses SWR with `lib/fetcher.ts`.
+- **DB**: `lib/db/schema.ts` is the source of truth; `lib/db/index.ts` exports the singleton `db` (postgres-js, `prepare: false` for Neon's pooler). Soft deletes via `deletedAt` on users, products, categories, tables, events.
+- **Auth**: NextAuth v5 credentials (username `11:11/N` or email). `auth.config.ts` is the edge-safe config used by `proxy.ts` (Next 16's renamed middleware); `authorized()` gates `/api/*` (public: `/api/auth/*`, `/api/public/*`, `/api/health`) and the protected page prefixes. The JWT isn't trusted for permissions: `lib/authz.ts` re-reads the user from the DB on every request (`requireUser(roles)` in route handlers, `requirePageUser(roles)` in pages), so deactivation/role changes apply immediately.
+- **Roles**: `staff` (own bills), `manager` (everything except users), `admin` (everything). `MANAGERS` in `lib/authz.ts`.
+- **Route handlers** are wrapped in `handle()` from `lib/api.ts`: throw `AppError(message, status)` for user-facing errors; parse bodies with `parseBody(request, zodSchema)`. Route files may only export HTTP handlers — shared zod schemas live in `lib/schemas.ts`.
+- **UI**: black theme, one solid accent (`--color-accent`), **no gradients**. Shared primitives in `components/ui.tsx`. Server components query the DB directly; client components mutate via `api()` from `lib/client.ts` and then `router.refresh()`. Live screens poll with SWR (`/api/queue`, `/api/notifications`, `/api/public/bills/<token>`).
+- QR codes are generated server-side as SVG (`lib/qr.ts`) with the request origin (`lib/url.ts`; set `NEXT_PUBLIC_APP_URL` to force a domain). In `next dev`, a localhost origin is swapped for the machine's LAN IP so phones on the same Wi-Fi can scan them (`allowedDevOrigins` in `next.config.ts` allows those IPs).
 
 ## Environment
 

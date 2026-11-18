@@ -6,6 +6,7 @@ import type { MenuCategory, MenuItem } from "@/lib/menu";
 import { formatNaira } from "@/lib/money";
 import { api, isNetworkError, randomId } from "@/lib/client";
 import { Modal } from "../Modal";
+import { CategoryTabs, categoryKey } from "../CategoryTabs";
 import { Button, Field, Input, Select, Textarea, cx } from "../ui";
 
 type Staff = { id: number; name: string };
@@ -17,7 +18,7 @@ export function billStorageKey(tableToken: string) {
   return `lounge:bill:${tableToken}`;
 }
 
-const catKey = (c: MenuCategory) => String(c.id ?? "other");
+const catKey = categoryKey;
 
 /**
  * Customer ordering: choose a server (new bill only), browse the menu one
@@ -127,29 +128,7 @@ export function OrderClient({ menu, mode, onPlaced }: { menu: MenuCategory[]; mo
       )}
       {mode.kind === "new" && <StepHeading n={2} title="Choose your drinks & food" />}
 
-      {menu.length > 1 && (
-        <div role="tablist" aria-label="Menu categories" className="sticky top-14 z-20 -mx-4 mb-2 flex gap-1 overflow-x-auto border-b border-line bg-black px-4">
-          {menu.map((c) => {
-            const selected = active && catKey(c) === catKey(active);
-            const n = inTab(c);
-            return (
-              <button
-                key={catKey(c)}
-                role="tab"
-                aria-selected={selected}
-                onClick={() => setTab(catKey(c))}
-                className={cx(
-                  "relative shrink-0 border-b-2 px-3 py-3 text-sm font-medium transition-colors",
-                  selected ? "border-accent text-white" : "border-transparent text-zinc-500 hover:text-zinc-200",
-                )}
-              >
-                {c.name}
-                {n > 0 && <span className="ml-1.5 rounded-full bg-accent px-1.5 text-[10px] font-bold text-black">{n}</span>}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {active && <CategoryTabs categories={menu} active={catKey(active)} onChange={setTab} counts={inTab} className="top-14" />}
 
       {active && (
         <ul role="tabpanel" aria-label={active.name} className="divide-y divide-line/70 pb-28">

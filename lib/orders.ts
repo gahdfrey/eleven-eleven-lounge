@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
   BILLABLE_ORDER_STATUSES,
@@ -466,7 +466,7 @@ export async function getBillDetail(where: { id: number } | { accessToken: strin
     .limit(1);
   if (!bill) return null;
 
-  const billOrders = await db.select().from(orders).where(eq(orders.billId, bill.bill.id)).orderBy(asc(orders.createdAt));
+  const billOrders = await db.select().from(orders).where(eq(orders.billId, bill.bill.id)).orderBy(desc(orders.createdAt));
   const items = billOrders.length
     ? await db.select().from(orderItems).where(inArray(orderItems.orderId, billOrders.map((o) => o.id))).orderBy(asc(orderItems.id))
     : [];

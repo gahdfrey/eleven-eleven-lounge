@@ -5,15 +5,20 @@ import { Minus, Plus, Search } from "lucide-react";
 import type { MenuCategory } from "@/lib/menu";
 import { formatNaira } from "@/lib/money";
 import { Input, cx } from "../ui";
+import { CategoryTabs, categoryKey } from "../CategoryTabs";
 
 export type Cart = Map<number, number>;
 
 /** Searchable menu with quantity steppers. Controlled: the parent owns the cart. */
 export function ItemSelector({ menu, cart, onChange, listClassName }: { menu: MenuCategory[]; cart: Cart; onChange: (c: Cart) => void; listClassName?: string }) {
   const [q, setQ] = useState("");
-  const [cat, setCat] = useState<string>("all");
-  const all = useMemo(() => menu.flatMap((c) => c.items.map((i) => ({ ...i, category: c.name, catKey: String(c.id ?? "other") }))), [menu]);
-  const filtered = all.filter((i) => (q ? i.name.toLowerCase().includes(q.toLowerCase()) : cat === "all" || i.catKey === cat));
+  const [cat, setCat] = useState<string>(() => (menu[0] ? categoryKey(menu[0]) : ""));
+  const all = useMemo(() => menu.flatMap((c) => c.items.map((i) => ({ ...i, category: c.name, catKey: categoryKey(c) }))), [menu]);
+  // Fall back to the first tab if the selected category disappears (menu changed live).
+  const activeCat = menu.some((c) => categoryKey(c) === cat) ? cat : menu[0] ? categoryKey(menu[0]) : "";
+  // Searching looks across every category; otherwise only the selected tab's items show.
+  const filtered = all.filter((i) => (q ? i.name.toLowerCase().includes(q.toLowerCase()) : i.catKey === activeCat));
+  const inCart = (c: MenuCategory) => c.items.reduce((n, i) => n + (cart.get(i.id) ?? 0), 0);
 
   function setQty(id: number, qty: number, max: number | null) {
     const next = new Map(cart);
@@ -29,18 +34,9 @@ export function ItemSelector({ menu, cart, onChange, listClassName }: { menu: Me
         <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the menu" className="pl-9" />
       </div>
-      {!q && menu.length > 1 && (
-        <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1">
-          {[{ key: "all", name: "All" }, ...menu.map((c) => ({ key: String(c.id ?? "other"), name: c.name }))].map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => setCat(c.key)}
-              className={cx("shrink-0 rounded-full border px-3 py-1 text-xs", cat === c.key ? "border-accent bg-accent/10 text-white" : "border-line text-zinc-400 hover:text-white")}
-            >
-              {c.name}
-            </button>
-          ))}
+      {!q && menu.length > 0 && (
+        <div className="px-4">
+          <CategoryTabs categories={menu} active={activeCat} onChange={setCat} counts={inCart} />
         </div>
       )}
       <ul className={cx("divide-y divide-line overflow-y-auto rounded-lg border border-line", listClassName ?? "max-h-[45vh]")}>
@@ -51,7 +47,7 @@ export function ItemSelector({ menu, cart, onChange, listClassName }: { menu: Me
               <button type="button" className="min-w-0 flex-1 text-left" disabled={i.soldOut} onClick={() => setQty(i.id, qty + 1, i.remaining)}>
                 <p className="truncate text-sm text-white">{i.name}</p>
                 <p className="text-xs text-muted">
-                  {formatNaira(i.price)} · {i.category}
+                  {formatNaira(i.price)}{q && ` · ${i.category}`}
                   {i.remaining != null && <span className={i.remaining <= 0 ? "text-red-400" : ""}> · {i.remaining} in stock</span>}
                 </p>
               </button>

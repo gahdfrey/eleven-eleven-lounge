@@ -33,7 +33,7 @@ export const GET = handle(async (request: Request) => {
     .innerJoin(users, eq(users.id, orders.staffId))
     .leftJoin(loungeTables, eq(loungeTables.id, bills.tableId))
     .where(and(inArray(orders.status, ["pending", "accepted"]), all ? undefined : eq(orders.staffId, user.id)))
-    .orderBy(orders.createdAt);
+    .orderBy(desc(orders.createdAt));
 
   const items = queueRows.length
     ? await db.select().from(orderItems).where(inArray(orderItems.orderId, queueRows.map((o) => o.id)))

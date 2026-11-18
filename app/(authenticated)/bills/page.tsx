@@ -8,6 +8,7 @@ import { addDays, formatDateTime, lagosDateString, startOfLagosDay } from "@/lib
 import { formatNaira } from "@/lib/money";
 import { billTotals } from "@/lib/orders";
 import { BillStatus, PAYMENT_LABELS } from "@/components/StatusBadge";
+import { PayBillButton } from "@/components/app/PayBillButton";
 import { EmptyState, Input, PageHeader, Select, Table, Td, Th, Button } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Bills" };
@@ -65,7 +66,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
       ) : (
         <Table>
           <thead>
-            <tr><Th>Bill</Th><Th>Table / customer</Th>{manager && <Th>Staff</Th>}<Th>Status</Th><Th className="text-right">Amount</Th></tr>
+            <tr><Th>Bill</Th><Th>Table / customer</Th>{manager && <Th>Staff</Th>}<Th>Status</Th><Th className="text-right">Amount</Th><Th /></tr>
           </thead>
           <tbody>
             {rows.map(({ bill, tableName, staffName }) => (
@@ -75,6 +76,9 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
                 {manager && <Td>{staffName}</Td>}
                 <Td><BillStatus status={bill.status} />{bill.paymentMethod && <span className="ml-2 text-xs text-muted">{PAYMENT_LABELS[bill.paymentMethod]}</span>}</Td>
                 <Td className="text-right tabular-nums">{formatNaira(bill.status === "paid" ? bill.paidAmount : totals.get(bill.id) ?? 0)}</Td>
+                <Td className="text-right">
+                  {bill.status === "open" && (bill.staffId === user.id || manager) && <PayBillButton billId={bill.id} total={totals.get(bill.id) ?? 0} />}
+                </Td>
               </tr>
             ))}
           </tbody>

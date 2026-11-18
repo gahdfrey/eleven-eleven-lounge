@@ -28,7 +28,7 @@ export function NavLinks({ sections, onNavigate }: { sections: NavSection[]; onN
                     href={item.href}
                     onClick={onNavigate}
                     className={cx(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                      "flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] transition-colors lg:py-2 lg:text-sm",
                       active ? "bg-raised text-white" : "text-zinc-400 hover:bg-raised/60 hover:text-white",
                     )}
                   >

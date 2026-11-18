@@ -30,15 +30,15 @@ No test runner is installed.
 
 The core problem is staff theft: money not remitted and stock not accounted for. Everything is built so every naira and every bottle is tied to one staff member.
 
-- **Customers (no login)** scan a table QR (`/t/<qrToken>`), browse the menu, pick the staff member serving them, and order. This opens a **bill** owned by that staff member; the customer follows it live at `/bill/<accessToken>` and can order more. Public pages: `/`, `/menu`, `/events`.
+- **Customers (no login)** scan a table QR (`/t/<qrToken>`), browse the menu, pick the staff member serving them (dropdown of `staff`-role users only), and order (menu is tabbed by category). This opens a **bill** owned by that staff member; the customer follows it live at `/bill/<accessToken>` and can order more. Public pages: `/`, `/menu`, `/events`.
 - **Staff** can also raise orders themselves at `/orders/new` (walk-up customers, no QR); the bill is theirs and the order is accepted immediately.
-- **Staff** get a notification (polling + chime + optional browser notification), accept or decline the order on `/orders` (staff see only their own; managers/admins see everyone's by default, `?scope=mine` narrows it, and today's handled orders stay listed), and close the bill with a payment method (cash / transfer / POS) on `/bills/<id>`.
+- **Staff** get a notification (polling + chime + optional browser notification), accept or decline the order on `/orders` (staff see only their own; managers/admins see everyone's by default, `?scope=mine` narrows it, and today's handled orders stay listed), mark orders served, and record payment (cash / transfer / POS) from the bill, the bills table, Live orders, or the pop-up that opens when a notification is tapped (`BillQuickView`). Customers see served items struck through with an "on its way" message, and can keep ordering until the bill is paid.
 - **Managers/admins** manage menu, stock, tables/QR, events, and see `/admin/reports`: per-staff sales, payment split, voids, open bills, and **cash outstanding** (cash collected minus remittances recorded).
 - **Users**: admins create accounts at `/admin/users`. Usernames are sequential `11:11/<staffNo>`; new accounts and resets get `Password1` (`DEFAULT_PASSWORD` in `lib/users.ts`) and must change it on first login (`mustChangePassword` → `/change-password`). Public `/signup` only works while there are zero users (owner bootstrap).
 
 ## Business rules (enforced in `lib/orders.ts` — keep them there)
 
-- Stock is deducted only when an order is accepted (customer orders) or entered (staff orders), atomically with `stock_qty >= qty`, and every change writes a `stock_movements` ledger row. Manual changes go through `lib/inventory.ts#adjustStock`.
+- Accepting an order (or staff entering one) puts it on the bill and **reserves** stock: menus and new orders see `stock_qty − reserved` (`reservedQty()`). Stock is **deducted when the order is marked served** — or when the bill is paid, which serves anything left — atomically with `stock_qty >= qty`, once per order (`orders.stock_deducted_at`), and every change writes a `stock_movements` ledger row. Voids return stock only if it was deducted. Manual changes go through `lib/inventory.ts#adjustStock`.
 - Staff can act only on their own bills/orders. Only managers can void (with a reason), which returns stock and notifies the staff member.
 - A bill can't be closed with pending orders; once paid it's frozen (`paidAmount` snapshot).
 - Order items snapshot name and unit price. Money is integer **kobo** everywhere (`lib/money.ts`).

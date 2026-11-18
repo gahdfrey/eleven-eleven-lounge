@@ -118,7 +118,7 @@ export function NewOrderForm({ menu, tables, openBills, staffName }: { menu: Men
           {saving ? "Saving…" : target === "new" ? `Place order · ${formatNaira(total)}` : `Add to bill #${target} · ${formatNaira(total)}`}
         </Button>
         <p className="mt-3 text-center text-xs text-zinc-500">
-          Recorded under <span className="text-zinc-300">{staffName}</span>. Stock is taken out now; you collect payment when closing the bill.
+          Recorded under <span className="text-zinc-300">{staffName}</span>. Stock is taken out when you mark it served; record payment when the customer pays.
         </p>
         <p className="mt-2 text-center text-xs"><Link href="/orders" className="text-muted hover:text-white">Cancel</Link></p>
       </Card>

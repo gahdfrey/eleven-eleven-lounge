@@ -7,6 +7,7 @@ import { Bell, BellRing } from "lucide-react";
 import { api, jsonFetcher } from "@/lib/client";
 import { timeAgo } from "@/lib/dates";
 import { cx } from "../ui";
+import { BillQuickView } from "./BillQuickView";
 
 type Notification = { id: number; title: string; body: string | null; link: string | null; readAt: string | null; createdAt: string };
 
@@ -30,15 +31,36 @@ function chime() {
   } catch {}
 }
 
-export function NotificationBell() {
+function billFromLink(link: string | null) {
+  const m = link?.match(/^\/bills\/(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
+export function NotificationBell({ me }: { me: { id: number; manager: boolean } }) {
   const router = useRouter();
   const { data, mutate } = useSWR<{ items: Notification[]; unread: number }>("/api/notifications", jsonFetcher, {
     refreshInterval: 7000,
     revalidateOnFocus: true,
   });
   const [open, setOpen] = useState(false);
+  const [quickBill, setQuickBill] = useState<number | null>(null);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported" | null>(null);
   const seen = useRef<number | null>(null);
+  const wrapper = useRef<HTMLDivElement>(null);
+
+  // Close the dropdown on any click outside it.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (wrapper.current && !wrapper.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
+  }, [open]);
 
   // Alert on anything newer than what we've already seen.
   useEffect(() => {
@@ -52,7 +74,9 @@ export function NotificationBell() {
           const n = new Notification(fresh[0].title, { body: fresh[0].body ?? undefined, tag: `n-${fresh[0].id}` });
           n.onclick = () => {
             window.focus();
-            if (fresh[0].link) router.push(fresh[0].link);
+            const billId = billFromLink(fresh[0].link);
+            if (billId) setQuickBill(billId);
+            else if (fresh[0].link) router.push(fresh[0].link);
           };
         }
         router.refresh();
@@ -65,7 +89,10 @@ export function NotificationBell() {
     setOpen(false);
     if (!n.readAt) await api("/api/notifications/read", { body: { ids: [n.id] } }).catch(() => {});
     mutate();
-    if (n.link) router.push(n.link);
+    // Order/bill notifications open the bill right here so it can be acted on immediately.
+    const billId = billFromLink(n.link);
+    if (billId) setQuickBill(billId);
+    else if (n.link) router.push(n.link);
   }
 
   async function markAll() {
@@ -75,7 +102,7 @@ export function NotificationBell() {
 
   const unread = data?.unread ?? 0;
   return (
-    <div className="relative">
+    <div className="relative" ref={wrapper}>
       <button
         onClick={() => {
           setPermission(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
@@ -93,7 +120,6 @@ export function NotificationBell() {
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-line bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <p className="text-sm font-semibold text-white">Notifications</p>
@@ -125,6 +151,7 @@ export function NotificationBell() {
           </div>
         </>
       )}
+      <BillQuickView billId={quickBill} me={me} onClose={() => setQuickBill(null)} />
     </div>
   );
 }

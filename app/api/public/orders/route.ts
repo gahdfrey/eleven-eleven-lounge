@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { bills, loungeTables, users } from "@/lib/db/schema";
@@ -49,7 +49,7 @@ export const POST = handle(async (request: Request) => {
       .select({ id: users.id })
       .from(users)
       .where(
-        and(eq(users.id, data.staffId), eq(users.active, true), isNull(users.deletedAt), inArray(users.role, ["staff", "manager", "admin"])),
+        and(eq(users.id, data.staffId), eq(users.active, true), isNull(users.deletedAt), eq(users.role, "staff")),
       )
       .limit(1);
     if (!staff) throw new AppError("That staff member isn't available. Please choose another.", 409);

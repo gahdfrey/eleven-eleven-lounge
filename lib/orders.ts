@@ -19,10 +19,14 @@ import { formatNaira } from "./money";
 /**
  * Accountability rules enforced here (the whole point of the app):
  * - Every bill and order belongs to exactly one staff member.
- * - Stock is deducted only when an order is accepted (customer orders) or
- *   entered (staff orders), atomically, and never below zero.
+ * - Accepting an order (or staff entering one) puts it on the bill and
+ *   *reserves* its stock: menus and new orders only see what isn't reserved.
+ * - Stock physically leaves inventory when the order is marked **served**
+ *   (or, at the latest, when the bill is paid — paying serves anything left),
+ *   atomically, never below zero, with a ledger row. `orders.stockDeductedAt`
+ *   records that it happened, so it can never happen twice.
  * - Staff cannot delete or void anything once accepted; only a manager can,
- *   with a reason, and stock goes back with a ledger entry.
+ *   with a reason, and any deducted stock goes back with a ledger entry.
  * - A paid bill is frozen: its amount and payment method are recorded against the staff member.
  */
 
@@ -40,8 +44,13 @@ function mergeLines(lines: OrderLineInput[]) {
   return [...map].map(([productId, qty]) => ({ productId, qty }));
 }
 
-/** Deducts stock for an order's items. Throws (rolling back the transaction) if anything is short. */
+/**
+ * Takes an order's items out of stock (once). Throws, rolling back the
+ * transaction, if anything is short.
+ */
 async function deductStock(tx: Tx, orderId: number, actorId: number | null) {
+  const [o] = await tx.select({ deducted: orders.stockDeductedAt }).from(orders).where(eq(orders.id, orderId));
+  if (o?.deducted) return;
   const items = await tx
     .select({ productId: orderItems.productId, qty: orderItems.qty, name: orderItems.name })
     .from(orderItems)
@@ -86,10 +95,13 @@ async function deductStock(tx: Tx, orderId: number, actorId: number | null) {
       );
     }
   }
+  await tx.update(orders).set({ stockDeductedAt: new Date() }).where(eq(orders.id, orderId));
 }
 
-/** Puts back stock deducted for an order (used when a manager voids it). */
+/** Puts back stock deducted for an order (used when a manager voids it). No-op if it was never deducted. */
 async function restoreStock(tx: Tx, orderId: number, actorId: number, note: string) {
+  const [o] = await tx.select({ deducted: orders.stockDeductedAt }).from(orders).where(eq(orders.id, orderId));
+  if (!o?.deducted) return;
   const items = await tx
     .select({ productId: orderItems.productId, qty: orderItems.qty })
     .from(orderItems)
@@ -112,6 +124,44 @@ async function restoreStock(tx: Tx, orderId: number, actorId: number, note: stri
       note,
     });
   }
+  await tx.update(orders).set({ stockDeductedAt: null }).where(eq(orders.id, orderId));
+}
+
+/**
+ * Quantity per product that is promised to accepted orders but not yet served
+ * (so still physically in stock, but not available to anyone else).
+ */
+export async function reservedQty(executor: Pick<typeof db, "select"> = db, productIds?: number[]) {
+  const rows = await executor
+    .select({ productId: orderItems.productId, qty: sql<number>`coalesce(sum(${orderItems.qty}), 0)::int` })
+    .from(orderItems)
+    .innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .where(
+      and(
+        eq(orders.status, "accepted"),
+        isNull(orders.stockDeductedAt),
+        productIds ? inArray(orderItems.productId, productIds) : undefined,
+      ),
+    )
+    .groupBy(orderItems.productId);
+  return new Map(rows.map((r) => [r.productId, r.qty]));
+}
+
+/** Throws if any line needs more than is in stock and not already reserved. Locks the product rows. */
+async function assertAvailable(tx: Tx, lines: { productId: number; qty: number }[]) {
+  const merged = mergeLines(lines);
+  if (merged.length === 0) return;
+  const ids = merged.map((l) => l.productId);
+  const rows = await tx.select().from(products).where(inArray(products.id, ids)).for("update");
+  const reserved = await reservedQty(tx, ids);
+  for (const line of merged) {
+    const p = rows.find((r) => r.id === line.productId);
+    if (!p || !p.trackStock) continue;
+    const free = p.stockQty - (reserved.get(p.id) ?? 0);
+    if (free < line.qty) {
+      throw new AppError(free > 0 ? `Only ${free} × ${p.name} left.` : `${p.name} is sold out.`, 409);
+    }
+  }
 }
 
 async function lockOpenBill(tx: Tx, billId: number) {
@@ -132,16 +182,14 @@ async function priceLines(tx: Tx, lines: OrderLineInput[]) {
   return merged.map((line) => {
     const p = rows.find((r) => r.id === line.productId);
     if (!p || !p.available) throw new AppError("One of the items is no longer on the menu. Please refresh.", 409);
-    if (p.trackStock && p.stockQty < line.qty) {
-      throw new AppError(p.stockQty > 0 ? `Only ${p.stockQty} × ${p.name} left.` : `${p.name} is sold out.`, 409);
-    }
     return { productId: p.id, name: p.name, unitPrice: p.price, qty: line.qty };
   });
 }
 
 /**
- * Creates an order on a bill. Staff orders are accepted (and stock deducted)
- * immediately; customer orders wait as "pending" until the staff accepts them.
+ * Creates an order on a bill. Staff orders are accepted immediately (stock
+ * reserved); customer orders wait as "pending" until the staff accepts them.
+ * Stock is deducted later, when the order is served.
  */
 export async function createOrder(input: {
   billId: number;
@@ -158,6 +206,7 @@ export async function createOrder(input: {
       }
     }
     const priced = await priceLines(tx, input.lines);
+    await assertAvailable(tx, priced);
     const now = new Date();
     const [order] = await tx
       .insert(orders)
@@ -172,9 +221,7 @@ export async function createOrder(input: {
       .returning();
     await tx.insert(orderItems).values(priced.map((p) => ({ ...p, orderId: order.id })));
 
-    if (input.source === "staff") {
-      await deductStock(tx, order.id, input.actor!.id);
-    } else {
+    if (input.source === "customer") {
       const count = priced.reduce((n, p) => n + p.qty, 0);
       const total = priced.reduce((n, p) => n + p.qty * p.unitPrice, 0);
       const [table] = bill.tableId
@@ -206,7 +253,8 @@ export async function acceptOrder(orderId: number, actor: CurrentUser) {
     if (!canActOnStaffRecord(actor, order.staffId)) throw new AppError("This order belongs to another staff member.", 403);
     if (order.status !== "pending") throw new AppError(`This order is already ${order.status}.`, 409);
     await lockOpenBill(tx, order.billId);
-    await deductStock(tx, order.id, actor.id);
+    const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+    await assertAvailable(tx, items);
     await tx.update(orders).set({ status: "accepted", acceptedAt: new Date() }).where(eq(orders.id, order.id));
   });
 }
@@ -225,11 +273,13 @@ export async function markServed(orderId: number, actor: CurrentUser) {
     const order = await lockOrder(tx, orderId);
     if (!canActOnStaffRecord(actor, order.staffId)) throw new AppError("This order belongs to another staff member.", 403);
     if (order.status !== "accepted") throw new AppError("Only accepted orders can be marked served.", 409);
+    await lockOpenBill(tx, order.billId);
+    await deductStock(tx, order.id, actor.id);
     await tx.update(orders).set({ status: "served", servedAt: new Date() }).where(eq(orders.id, order.id));
   });
 }
 
-/** Manager-only: cancels an accepted/served order, returns its stock, and tells the staff member. */
+/** Manager-only: cancels an accepted/served order, returns any deducted stock, and tells the staff member. */
 export async function voidOrder(orderId: number, manager: CurrentUser, reason: string) {
   if (!isManager(manager)) throw new AppError("Only a manager can void an order.", 403);
   return db.transaction(async (tx) => {
@@ -275,9 +325,19 @@ export async function payBill(billId: number, actor: CurrentUser, method: Paymen
       .from(orders)
       .where(and(eq(orders.billId, bill.id), eq(orders.status, "pending")))
       .limit(1);
-    if (pending) throw new AppError("Accept or reject the pending order before closing this bill.", 409);
+    if (pending) throw new AppError("Accept or decline the waiting order before recording payment.", 409);
     const total = (await billTotals([bill.id], tx)).get(bill.id) ?? 0;
     if (total <= 0) throw new AppError("This bill has nothing on it. Ask a manager to void it instead.", 409);
+    // Anything paid for has been handed over: serve what's left so its stock is deducted.
+    const unserved = await tx
+      .select({ id: orders.id })
+      .from(orders)
+      .where(and(eq(orders.billId, bill.id), eq(orders.status, "accepted")))
+      .for("update");
+    for (const o of unserved) {
+      await deductStock(tx, o.id, actor.id);
+      await tx.update(orders).set({ status: "served", servedAt: new Date() }).where(eq(orders.id, o.id));
+    }
     await tx
       .update(bills)
       .set({ status: "paid", paymentMethod: method, paidAmount: total, paidAt: new Date(), paidById: actor.id })
@@ -286,7 +346,7 @@ export async function payBill(billId: number, actor: CurrentUser, method: Paymen
   });
 }
 
-/** Manager-only: voids a whole open bill, returning stock for everything that was accepted. */
+/** Manager-only: voids a whole open bill, returning any stock that was deducted. */
 export async function voidBill(billId: number, manager: CurrentUser, reason: string) {
   if (!isManager(manager)) throw new AppError("Only a manager can void a bill.", 403);
   return db.transaction(async (tx) => {

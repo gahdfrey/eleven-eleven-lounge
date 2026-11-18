@@ -14,7 +14,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     <>
       <PageHeader
         title="Live orders"
-        description={all ? "Everyone's orders, updating automatically. Accepting an order adds it to the bill and takes it out of stock." : "Your orders, updating automatically. Accepting an order adds it to the bill and takes it out of stock."}
+        description={all ? "Everyone's orders, updating automatically. Accept to add an order to the bill; mark it served to take it out of stock." : "Your orders, updating automatically. Accept to add an order to the bill; mark it served to take it out of stock."}
         actions={
           <>
             {isManager(user) && (

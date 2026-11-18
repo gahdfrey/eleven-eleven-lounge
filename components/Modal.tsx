@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { X } from "lucide-react";
+import { Portal } from "./Portal";
 
 export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -17,6 +18,7 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
 
   if (!open) return null;
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 sm:items-center sm:p-4" onMouseDown={onClose}>
       <div
         role="dialog"
@@ -34,5 +36,6 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
         <div className="p-5">{children}</div>
       </div>
     </div>
+    </Portal>
   );
 }

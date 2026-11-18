@@ -68,11 +68,11 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-black/95 px-4 backdrop-blur lg:justify-end">
-          <div className="flex items-center gap-2 lg:hidden">
+          <div className="flex items-center gap-1 lg:hidden">
             <MobileNav sections={sections} footer={userFooter} />
-            <Link href="/dashboard"><Logo /></Link>
+            <Link href="/dashboard" className="ml-1"><Logo /></Link>
           </div>
-          <NotificationBell />
+          <NotificationBell me={{ id: user.id, manager }} />
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:py-8">{children}</main>
       </div>

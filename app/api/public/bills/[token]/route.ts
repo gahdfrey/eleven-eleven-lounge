@@ -23,6 +23,7 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ token: 
         id: o.id,
         status: o.status,
         createdAt: o.createdAt,
+        servedAt: o.servedAt,
         rejectReason: o.rejectReason,
         total: o.total,
         items: o.items.map((i) => ({ name: i.name, qty: i.qty, unitPrice: i.unitPrice })),

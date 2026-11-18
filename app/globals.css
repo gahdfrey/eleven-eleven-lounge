@@ -37,3 +37,15 @@ input[type="number"]::-webkit-outer-spin-button {
   body { background: #fff; color: #000; }
   .no-print { display: none !important; }
 }
+
+/* Mobile drawer slide-in (no gradients, just motion). */
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.drawer-in {
+  animation: drawer-in 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .drawer-in { animation: none; }
+}

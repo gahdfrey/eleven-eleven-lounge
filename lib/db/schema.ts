@@ -162,7 +162,7 @@ export const bills = pgTable(
 
 export const ORDER_STATUSES = ["pending", "accepted", "served", "rejected", "void"] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
-/** Orders in these statuses count toward the bill and have deducted stock. */
+/** Orders in these statuses count toward the bill. Stock leaves inventory when an order is served (see stockDeductedAt). */
 export const BILLABLE_ORDER_STATUSES: OrderStatus[] = ["accepted", "served"];
 
 export const orders = pgTable(
@@ -177,6 +177,8 @@ export const orders = pgTable(
     note: text("note"),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }),
     servedAt: timestamp("served_at", { withTimezone: true }),
+    /** When this order's stock left inventory (on serve, or when its bill was paid). Null = not deducted. */
+    stockDeductedAt: timestamp("stock_deducted_at", { withTimezone: true }),
     rejectReason: text("reject_reason"),
     voidReason: text("void_reason"),
     voidedById: integer("voided_by_id").references(() => users.id),

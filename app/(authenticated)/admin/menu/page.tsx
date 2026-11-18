@@ -14,7 +14,7 @@ export default async function AdminMenuPage() {
   ]);
   return (
     <>
-      <PageHeader title="Menu & stock" description="Prices and items customers see. Stock goes down automatically each time an order is accepted." />
+      <PageHeader title="Menu & stock" description="Prices and items customers see. Stock goes down automatically when an order is marked served." />
       <MenuManager categories={cats.map((c) => ({ id: c.id, name: c.name, sortOrder: c.sortOrder }))} products={items} />
     </>
   );

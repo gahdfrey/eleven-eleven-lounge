@@ -12,6 +12,7 @@ type U = { id: number; staffNo: number; username: string; firstname: string; las
 const ROLE_HELP: Record<string, string> = {
   staff: "Takes orders and closes their own bills.",
   manager: "Everything staff can do, plus menu, stock, voids, tables, events and cash reports.",
+  finance: "Finance dashboard and exports, and receiving cash from staff. Cannot take orders or change the menu.",
   admin: "Full access, including creating users.",
 };
 
@@ -74,6 +75,7 @@ export function UsersManager({ users, meId }: { users: U[]; meId: number }) {
                 <Select value={u.role} disabled={u.id === meId} onChange={(e) => update(u.id, { role: e.target.value })} className="h-8 w-auto text-xs">
                   <option value="staff">Staff</option>
                   <option value="manager">Manager</option>
+                  <option value="finance">Finance</option>
                   <option value="admin">Admin</option>
                 </Select>
               </Td>
@@ -104,6 +106,7 @@ export function UsersManager({ users, meId }: { users: U[]; meId: number }) {
             <Select value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="staff">Staff</option>
               <option value="manager">Manager</option>
+              <option value="finance">Finance</option>
               <option value="admin">Admin</option>
             </Select>
           </Field>

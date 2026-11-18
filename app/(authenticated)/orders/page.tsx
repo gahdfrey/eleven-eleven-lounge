@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { isManager, requirePageUser } from "@/lib/authz";
+import { isManager, requirePageUser, SERVICE } from "@/lib/authz";
 import { PageHeader, ButtonLink } from "@/components/ui";
 import { Plus } from "lucide-react";
 import { QueueClient } from "@/components/app/QueueClient";
@@ -7,7 +7,7 @@ import { QueueClient } from "@/components/app/QueueClient";
 export const metadata: Metadata = { title: "Live orders" };
 
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ scope?: string }> }) {
-  const user = await requirePageUser();
+  const user = await requirePageUser(SERVICE);
   // Managers and admins oversee everyone by default; staff only ever see their own.
   const all = isManager(user) && (await searchParams).scope !== "mine";
   return (

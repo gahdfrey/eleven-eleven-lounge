@@ -3,7 +3,7 @@ import { and, desc, eq, gte, inArray, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bills, loungeTables, orderItems, orders, users } from "@/lib/db/schema";
 import { handle } from "@/lib/api";
-import { isManager, requireUser } from "@/lib/authz";
+import { isManager, requireUser, SERVICE } from "@/lib/authz";
 import { billTotals } from "@/lib/orders";
 import { lagosDateString, startOfLagosDay } from "@/lib/dates";
 
@@ -14,7 +14,7 @@ import { lagosDateString, startOfLagosDay } from "@/lib/dates";
  * everyone's by default (?scope=mine narrows it to their own).
  */
 export const GET = handle(async (request: Request) => {
-  const user = await requireUser();
+  const user = await requireUser(SERVICE);
   const all = isManager(user) && new URL(request.url).searchParams.get("scope") !== "mine";
 
   const queueRows = await db

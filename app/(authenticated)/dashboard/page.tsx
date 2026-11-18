@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { isManager, requirePageUser } from "@/lib/authz";
 import { addDays, lagosDateString, startOfLagosDay } from "@/lib/dates";
@@ -11,6 +12,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const user = await requirePageUser();
+  if (user.role === "finance") redirect("/finance");
   const manager = isManager(user);
   const today = startOfLagosDay(lagosDateString());
   const [rows, pending, lowStock] = await Promise.all([

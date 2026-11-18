@@ -15,6 +15,10 @@ export type CurrentUser = {
 };
 
 export const MANAGERS: Role[] = ["admin", "manager"];
+/** Who takes orders and handles bills (everyone except finance). */
+export const SERVICE: Role[] = ["admin", "manager", "staff"];
+/** Who can see the finance reports and record cash handed over by staff. */
+export const FINANCE: Role[] = ["admin", "manager", "finance"];
 
 export function isManager(user: Pick<CurrentUser, "role">) {
   return MANAGERS.includes(user.role);
@@ -56,6 +60,6 @@ export async function requirePageUser(roles?: Role[]): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.mustChangePassword) redirect("/change-password");
-  if (roles && !roles.includes(user.role)) redirect("/orders");
+  if (roles && !roles.includes(user.role)) redirect(user.role === "finance" ? "/finance" : "/orders");
   return user;
 }

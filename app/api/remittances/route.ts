@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { remittances, users } from "@/lib/db/schema";
 import { AppError, handle, parseBody } from "@/lib/api";
-import { MANAGERS, requireUser } from "@/lib/authz";
+import { FINANCE, requireUser } from "@/lib/authz";
 import { notify } from "@/lib/notifications";
 import { formatNaira } from "@/lib/money";
 
@@ -14,9 +14,9 @@ const schema = z.object({
   note: z.string().trim().max(200).optional(),
 });
 
-/** Manager records cash handed over by a staff member. */
+/** Manager or finance records cash handed over by a staff member. */
 export const POST = handle(async (request: Request) => {
-  const manager = await requireUser(MANAGERS);
+  const manager = await requireUser(FINANCE);
   const { data, error } = await parseBody(request, schema);
   if (error) return error;
   const [staff] = await db.select({ id: users.id }).from(users).where(eq(users.id, data.staffId));

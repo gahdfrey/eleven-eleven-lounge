@@ -3,7 +3,7 @@ import Link from "next/link";
 import { and, desc, eq, gte, lt, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bills, loungeTables, users, type BillStatus as BillStatusT } from "@/lib/db/schema";
-import { isManager, requirePageUser } from "@/lib/authz";
+import { isManager, requirePageUser, SERVICE } from "@/lib/authz";
 import { addDays, formatDateTime, lagosDateString, startOfLagosDay } from "@/lib/dates";
 import { formatNaira } from "@/lib/money";
 import { billTotals } from "@/lib/orders";
@@ -14,7 +14,7 @@ import { EmptyState, Input, PageHeader, Select, Table, Td, Th, Button } from "@/
 export const metadata: Metadata = { title: "Bills" };
 
 export default async function BillsPage({ searchParams }: { searchParams: Promise<{ status?: string; date?: string; staff?: string }> }) {
-  const user = await requirePageUser();
+  const user = await requirePageUser(SERVICE);
   const manager = isManager(user);
   const sp = await searchParams;
   const date = sp.date || lagosDateString();

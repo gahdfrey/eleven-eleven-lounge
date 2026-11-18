@@ -16,7 +16,10 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
   const manager = isManager(user);
   const liveVersion = await changeFingerprint("staff");
 
-  const sections: NavSection[] = [
+  const finance = user.role === "finance";
+  const sections: NavSection[] = finance
+    ? [{ items: [{ href: "/finance", label: "Finance", icon: "Wallet" }] }]
+    : [
     {
       items: [
         { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
@@ -30,6 +33,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
     sections.push({
       title: "Manage",
       items: [
+        { href: "/finance", label: "Finance", icon: "Wallet" },
         { href: "/admin/reports", label: "Staff & cash", icon: "BarChart3" },
         { href: "/admin/menu", label: "Menu & stock", icon: "Package" },
         { href: "/admin/inventory", label: "Stock ledger", icon: "ScrollText" },
@@ -62,7 +66,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
     <div className="flex min-h-screen">
       <LiveRefresh version={liveVersion} />
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-surface p-4 lg:flex">
-        <Link href="/dashboard" className="mb-8 px-3 pt-2"><Logo /></Link>
+        <Link href={finance ? "/finance" : "/dashboard"} className="mb-8 px-3 pt-2"><Logo /></Link>
         <div className="flex-1 overflow-y-auto"><NavLinks sections={sections} /></div>
         {userFooter}
       </aside>
@@ -70,7 +74,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-black/95 px-4 backdrop-blur lg:justify-end">
           <div className="flex items-center gap-1 lg:hidden">
             <MobileNav sections={sections} footer={userFooter} />
-            <Link href="/dashboard" className="ml-1"><Logo /></Link>
+            <Link href={finance ? "/finance" : "/dashboard"} className="ml-1"><Logo /></Link>
           </div>
           <NotificationBell me={{ id: user.id, manager }} />
         </header>

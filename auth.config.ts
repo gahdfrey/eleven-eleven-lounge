@@ -1,7 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 
 /** Pages that need a logged-in user. Everything else (landing, menu, events, QR ordering, bills) is public. */
-const PROTECTED_PAGES = ["/dashboard", "/orders", "/bills", "/admin", "/account", "/change-password"];
+const PROTECTED_PAGES = ["/dashboard", "/orders", "/bills", "/admin", "/finance", "/account", "/change-password"];
 
 /**
  * Edge-safe auth config shared by proxy.ts (no DB access here) and auth.ts.

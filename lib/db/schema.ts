@@ -27,7 +27,8 @@ const timestamps = {
 
 // ─── People ─────────────────────────────────────────────────────────────────
 
-export const ROLES = ["admin", "manager", "staff"] as const;
+/** finance = read-only money reports and receiving cash; no orders, menu or stock. */
+export const ROLES = ["admin", "manager", "staff", "finance"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const users = pgTable(

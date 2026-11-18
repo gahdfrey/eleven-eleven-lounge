@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AppError, handle, parseBody, parseId } from "@/lib/api";
-import { requireUser } from "@/lib/authz";
+import { requireUser, SERVICE } from "@/lib/authz";
 import { acceptOrder, markServed, rejectOrder, voidOrder } from "@/lib/orders";
 
 const reasonSchema = z.object({ reason: z.string().trim().min(3, "Give a short reason").max(200) });
@@ -10,7 +10,7 @@ const reasonSchema = z.object({ reason: z.string().trim().min(3, "Give a short r
 export const POST = handle(async (request: Request, ctx: { params: Promise<{ id: string; action: string }> }) => {
   const { id: rawId, action } = await ctx.params;
   const id = parseId(rawId);
-  const user = await requireUser();
+  const user = await requireUser(SERVICE);
 
   switch (action) {
     case "accept":

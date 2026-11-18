@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bills, loungeTables } from "@/lib/db/schema";
-import { requirePageUser } from "@/lib/authz";
+import { requirePageUser, SERVICE } from "@/lib/authz";
 import { getMenu } from "@/lib/menu";
 import { billTotals } from "@/lib/orders";
 import { EmptyState, ButtonLink, PageHeader } from "@/components/ui";
@@ -11,7 +11,7 @@ import { NewOrderForm } from "@/components/app/NewOrderForm";
 export const metadata: Metadata = { title: "New order" };
 
 export default async function NewOrderPage() {
-  const user = await requirePageUser();
+  const user = await requirePageUser(SERVICE);
   const [menu, tables, mine] = await Promise.all([
     getMenu(),
     db

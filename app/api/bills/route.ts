@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { bills, loungeTables } from "@/lib/db/schema";
 import { AppError, handle, parseBody } from "@/lib/api";
-import { requireUser } from "@/lib/authz";
+import { requireUser, SERVICE } from "@/lib/authz";
 import { createOrder } from "@/lib/orders";
 import { randomToken } from "@/lib/tokens";
 
@@ -21,7 +21,7 @@ const schema = z.object({
 
 /** Staff opens a bill (walk-up customer, no QR). The bill and its orders are always theirs. */
 export const POST = handle(async (request: Request) => {
-  const user = await requireUser();
+  const user = await requireUser(SERVICE);
   const { data, error } = await parseBody(request, schema);
   if (error) return error;
   if (data.tableId) {

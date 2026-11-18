@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { isManager, requirePageUser } from "@/lib/authz";
+import { isManager, requirePageUser, SERVICE } from "@/lib/authz";
 import { getBillDetail } from "@/lib/orders";
 import { getMenu } from "@/lib/menu";
 import { formatNaira } from "@/lib/money";
@@ -16,7 +16,7 @@ import { BillActions } from "@/components/app/BillActions";
 export const metadata: Metadata = { title: "Bill" };
 
 export default async function BillDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ add?: string }> }) {
-  const user = await requirePageUser();
+  const user = await requirePageUser(SERVICE);
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
   const bill = await getBillDetail({ id });

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handle, parseBody, parseId } from "@/lib/api";
-import { requireUser } from "@/lib/authz";
+import { requireUser, SERVICE } from "@/lib/authz";
 import { createOrder } from "@/lib/orders";
 
 const schema = z.object({
@@ -14,7 +14,7 @@ const schema = z.object({
 
 /** Staff adds items to their own bill; accepted immediately and stock deducted. */
 export const POST = handle(async (request: Request, ctx: { params: Promise<{ id: string }> }) => {
-  const user = await requireUser();
+  const user = await requireUser(SERVICE);
   const billId = parseId((await ctx.params).id);
   const { data, error } = await parseBody(request, schema);
   if (error) return error;

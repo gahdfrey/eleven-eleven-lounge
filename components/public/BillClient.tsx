@@ -38,7 +38,10 @@ function statusLabel(status: string, staffName: string): [Tone, string] {
 }
 
 export function BillClient({ token, menu }: { token: string; menu: MenuCategory[] }) {
-  const { data, error, mutate } = useSWR<{ bill: PublicBill }>(`/api/public/bills/${token}`, jsonFetcher, { refreshInterval: 2500 });
+  const { data, error, mutate } = useSWR<{ bill: PublicBill }>(`/api/public/bills/${token}`, jsonFetcher, {
+    // Check every 2.5 s while an order is waiting or being prepared, otherwise every 10 s.
+    refreshInterval: (d) => (d?.bill.status === "open" && d.bill.orders.some((o) => o.status === "pending" || o.status === "accepted") ? 2500 : 10000),
+  });
   const [ordering, setOrdering] = useState(false);
 
   if (error) return <EmptyState title="We couldn't find this bill" description="Please scan the QR code on your table again." />;

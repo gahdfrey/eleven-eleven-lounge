@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Minus, Plus, ShoppingBag, Check } from "lucide-react";
 import type { MenuCategory, MenuItem } from "@/lib/menu";
 import { formatNaira } from "@/lib/money";
-import { api } from "@/lib/client";
+import { api, isNetworkError, randomId } from "@/lib/client";
 import { Modal } from "../Modal";
 import { Button, Field, Input, Select, Textarea, cx } from "../ui";
 
@@ -33,6 +33,8 @@ export function OrderClient({ menu, mode, onPlaced }: { menu: MenuCategory[]; mo
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // One id per order attempt: resending after a dropped connection can never create a duplicate.
+  const [ref, setRef] = useState<string | null>(null);
 
   // If the selected tab disappears (menu changed live), fall back to the first one.
   const active = menu.find((c) => catKey(c) === tab) ?? menu[0];
@@ -42,6 +44,7 @@ export function OrderClient({ menu, mode, onPlaced }: { menu: MenuCategory[]; mo
   const inTab = (c: MenuCategory) => c.items.reduce((n, i) => n + (cart.get(i.id) ?? 0), 0);
 
   function setQty(id: number, qty: number) {
+    setRef(null);
     setCart((prev) => {
       const next = new Map(prev);
       const item = items.get(id);
@@ -57,16 +60,32 @@ export function OrderClient({ menu, mode, onPlaced }: { menu: MenuCategory[]; mo
     setError("");
     if (mode.kind === "new" && !staffId) return setError("Please choose who is serving you.");
     setSubmitting(true);
+    const attemptRef = ref ?? randomId();
+    setRef(attemptRef);
+    const body = {
+      ...(mode.kind === "new"
+        ? { tableToken: mode.tableToken, staffId, customerName: name || undefined }
+        : { billToken: mode.billToken }),
+      note: note || undefined,
+      ref: attemptRef,
+      items: lines.map((l) => ({ productId: l.item.id, qty: l.qty })),
+    };
     try {
-      const res = await api<{ billToken: string }>("/api/public/orders", {
-        body: {
-          ...(mode.kind === "new"
-            ? { tableToken: mode.tableToken, staffId, customerName: name || undefined }
-            : { billToken: mode.billToken }),
-          note: note || undefined,
-          items: lines.map((l) => ({ productId: l.item.id, qty: l.qty })),
-        },
-      });
+      let res: { billToken: string } | undefined;
+      for (let attempt = 1; !res; attempt++) {
+        try {
+          res = await api<{ billToken: string }>("/api/public/orders", { body });
+        } catch (e) {
+          // Busy Wi-Fi: quietly resend the same order a couple of times before giving up.
+          if (isNetworkError(e) && attempt < 3) {
+            await new Promise((r) => setTimeout(r, 800 * attempt));
+            continue;
+          }
+          if (isNetworkError(e)) throw new Error("Connection problem. Check your internet and tap Send again. You won't be charged twice.");
+          throw e;
+        }
+      }
+      setRef(null);
       setCart(new Map());
       setNote("");
       setOpen(false);

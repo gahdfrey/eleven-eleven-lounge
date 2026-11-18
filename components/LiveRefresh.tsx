@@ -34,7 +34,8 @@ export function LiveRefresh({ version, endpoint = "/api/live", intervalMs = 2500
       if (stopped || inFlight || document.hidden) return;
       inFlight = true;
       try {
-        const res = await fetch(endpoint, { cache: "no-store" });
+        // Public endpoints are CDN-cached (shared by all customers); staff ones are always fresh.
+        const res = await fetch(endpoint, { cache: endpoint.startsWith("/api/public/") ? "default" : "no-store" });
         if (res.ok) {
           const { v } = (await res.json()) as { v: string };
           if (v !== last.current) {

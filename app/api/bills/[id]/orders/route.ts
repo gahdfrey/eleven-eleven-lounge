@@ -18,6 +18,6 @@ export const POST = handle(async (request: Request, ctx: { params: Promise<{ id:
   const billId = parseId((await ctx.params).id);
   const { data, error } = await parseBody(request, schema);
   if (error) return error;
-  const order = await createOrder({ billId, source: "staff", lines: data.items, note: data.note, actor: user });
-  return NextResponse.json({ id: order.id }, { status: 201 });
+  const result = await createOrder({ bill: { id: billId }, source: "staff", lines: data.items, note: data.note, actor: user });
+  return NextResponse.json({ id: result.orderId }, { status: 201 });
 });

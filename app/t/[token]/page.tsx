@@ -35,7 +35,7 @@ export default async function TablePage({ params }: { params: Promise<{ token: s
   return (
     <>
       <PublicHeader />
-      <LiveRefresh version={await changeFingerprint("public")} endpoint="/api/public/live" intervalMs={4000} />
+      <LiveRefresh version={await changeFingerprint("public")} endpoint="/api/public/live" intervalMs={10000} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted">You&apos;re at</p>
         <h1 className="mb-6 mt-1 text-3xl font-semibold tracking-tight text-white">{table.name}</h1>

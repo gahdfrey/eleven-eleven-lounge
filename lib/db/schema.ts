@@ -54,18 +54,23 @@ export const users = pgTable(
     uniqueIndex("users_email_unique").on(t.email),
     uniqueIndex("users_username_unique").on(t.username),
     uniqueIndex("users_staff_no_unique").on(t.staffNo),
+    index("users_updated_idx").on(t.updatedAt),
   ],
 );
 
 // ─── Menu & inventory ───────────────────────────────────────────────────────
 
-export const categories = pgTable("categories", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  sortOrder: integer("sort_order").notNull().default(0),
-  ...timestamps,
-  deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+export const categories = pgTable(
+  "categories",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    ...timestamps,
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [index("categories_updated_idx").on(t.updatedAt)],
+);
 
 export const products = pgTable(
   "products",
@@ -85,7 +90,7 @@ export const products = pgTable(
     ...timestamps,
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (t) => [index("products_category_idx").on(t.categoryId)],
+  (t) => [index("products_category_idx").on(t.categoryId), index("products_updated_idx").on(t.updatedAt)],
 );
 
 export const STOCK_REASONS = ["restock", "sale", "void", "adjustment", "waste"] as const;
@@ -124,7 +129,7 @@ export const loungeTables = pgTable(
     ...timestamps,
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (t) => [uniqueIndex("lounge_tables_qr_token_unique").on(t.qrToken)],
+  (t) => [uniqueIndex("lounge_tables_qr_token_unique").on(t.qrToken), index("lounge_tables_updated_idx").on(t.updatedAt)],
 );
 
 export const BILL_STATUSES = ["open", "paid", "void"] as const;
@@ -157,6 +162,8 @@ export const bills = pgTable(
     uniqueIndex("bills_access_token_unique").on(t.accessToken),
     index("bills_staff_status_idx").on(t.staffId, t.status),
     index("bills_paid_at_idx").on(t.paidAt),
+    index("bills_status_idx").on(t.status),
+    index("bills_updated_idx").on(t.updatedAt),
   ],
 );
 
@@ -179,6 +186,12 @@ export const orders = pgTable(
     servedAt: timestamp("served_at", { withTimezone: true }),
     /** When this order's stock left inventory (on serve, or when its bill was paid). Null = not deducted. */
     stockDeductedAt: timestamp("stock_deducted_at", { withTimezone: true }),
+    /**
+     * Random id the customer's phone sends with an order. If a flaky connection
+     * makes the phone send the same order twice, the second is recognised and
+     * ignored instead of creating a duplicate.
+     */
+    clientRef: text("client_ref"),
     rejectReason: text("reject_reason"),
     voidReason: text("void_reason"),
     voidedById: integer("voided_by_id").references(() => users.id),
@@ -187,6 +200,10 @@ export const orders = pgTable(
   (t) => [
     index("orders_bill_idx").on(t.billId),
     index("orders_staff_status_idx").on(t.staffId, t.status),
+    index("orders_status_created_idx").on(t.status, t.createdAt),
+    index("orders_created_idx").on(t.createdAt),
+    index("orders_updated_idx").on(t.updatedAt),
+    uniqueIndex("orders_client_ref_unique").on(t.clientRef),
   ],
 );
 
@@ -231,7 +248,7 @@ export const notifications = pgTable(
     readAt: timestamp("read_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("notifications_user_idx").on(t.userId, t.readAt)],
+  (t) => [index("notifications_user_idx").on(t.userId, t.readAt), index("notifications_user_created_idx").on(t.userId, t.createdAt)],
 );
 
 export const events = pgTable(
@@ -248,7 +265,7 @@ export const events = pgTable(
     ...timestamps,
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (t) => [index("events_starts_at_idx").on(t.startsAt)],
+  (t) => [index("events_starts_at_idx").on(t.startsAt), index("events_updated_idx").on(t.updatedAt)],
 );
 
 export type User = typeof users.$inferSelect;

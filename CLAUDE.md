@@ -44,6 +44,16 @@ The core problem is staff theft: money not remitted and stock not accounted for.
 - Order items snapshot name and unit price. Money is integer **kobo** everywhere (`lib/money.ts`).
 - Dates/report days use Africa/Lagos (`lib/dates.ts`).
 
+## Busy nights (concurrency)
+
+Many customers order at once; keep these properties when changing order code:
+- All order/bill/stock writes go through `inTransaction()` in `lib/orders.ts`, which retries on deadlock/serialization errors.
+- Rows are locked in a fixed order — bill → products sorted by id (`mergeLines` sorts) — so concurrent orders can't deadlock.
+- `createOrder` creates a new bill and its first order in one transaction (no empty bills), and is idempotent on `orders.client_ref`: the customer's phone sends a random `ref` per submission and retries on network errors; duplicates return the original bill.
+- At most `MAX_WAITING_ORDERS_PER_BILL` pending orders per bill (spam guard).
+- Polling is cheap: the live fingerprint uses indexed `max()`s; `/api/public/live` is CDN-cached (`s-maxage=2`) so all customers share one read; customer bills poll fast only while an order is pending/being prepared.
+- Load-tested locally: 200 simultaneous orders on 30 bottles → exactly 30 accepted, 0 oversold, 0 server errors; 15 duplicate submissions → 1 order.
+
 ## Architecture
 
 - **DB**: `lib/db/schema.ts` is the source of truth; `lib/db/index.ts` exports the singleton `db` (postgres-js, `prepare: false` for Neon's pooler). Soft deletes via `deletedAt` on users, products, categories, tables, events.

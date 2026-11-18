@@ -31,24 +31,15 @@ export const POST = handle(async (request: Request) => {
       .where(and(eq(loungeTables.id, data.tableId), isNull(loungeTables.deletedAt)));
     if (!t) throw new AppError("Table not found", 404);
   }
+  const newBill = { staffId: user.id, tableId: data.tableId ?? null, customerName: data.customerName };
+  if (data.items?.length) {
+    // Bill and first order are created together: if the order fails (e.g. out of stock), no empty bill is left.
+    const result = await createOrder({ bill: { create: newBill }, source: "staff", lines: data.items, note: data.note, actor: user });
+    return NextResponse.json({ id: result.billId }, { status: 201 });
+  }
   const [bill] = await db
     .insert(bills)
-    .values({
-      staffId: user.id,
-      tableId: data.tableId ?? null,
-      customerName: data.customerName || null,
-      accessToken: randomToken(16),
-    })
+    .values({ ...newBill, customerName: newBill.customerName || null, accessToken: randomToken(16) })
     .returning({ id: bills.id });
-
-  if (data.items?.length) {
-    try {
-      await createOrder({ billId: bill.id, source: "staff", lines: data.items, note: data.note, actor: user });
-    } catch (err) {
-      // Don't leave an empty bill behind if the order failed (e.g. out of stock).
-      await db.delete(bills).where(eq(bills.id, bill.id));
-      throw err;
-    }
-  }
   return NextResponse.json({ id: bill.id }, { status: 201 });
 });

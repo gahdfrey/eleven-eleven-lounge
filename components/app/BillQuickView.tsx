@@ -17,7 +17,7 @@ type Bill = Omit<BillDetail, "orders" | "createdAt"> & { createdAt: string; orde
 
 /** A bill in a pop-up (opened from a notification): act on its orders and record payment without leaving the page. */
 export function BillQuickView({ billId, me, onClose }: { billId: number | null; me: { id: number; manager: boolean }; onClose: () => void }) {
-  const { data, error, mutate } = useSWR<{ bill: Bill }>(billId ? `/api/bills/${billId}` : null, jsonFetcher, { refreshInterval: 3000 });
+  const { data, error, mutate } = useSWR<{ bill: Bill }>(billId ? `/api/bills/${billId}` : null, jsonFetcher, { refreshInterval: 5000 });
   const [paying, setPaying] = useState(false);
   const bill = data?.bill;
   const canAct = !!bill && (bill.staffId === me.id || me.manager);

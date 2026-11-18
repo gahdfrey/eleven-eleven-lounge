@@ -14,7 +14,7 @@ export default async function BillPage({ params }: { params: Promise<{ token: st
   return (
     <>
       <PublicHeader />
-      <LiveRefresh version={await changeFingerprint("public")} endpoint="/api/public/live" intervalMs={4000} />
+      <LiveRefresh version={await changeFingerprint("public")} endpoint="/api/public/live" intervalMs={20000} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6">
         <BillClient token={token} menu={menu} />
       </main>

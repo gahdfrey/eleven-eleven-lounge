@@ -12,6 +12,8 @@ import {
   type PaymentMethod,
 } from "./db/schema";
 import { AppError } from "./api";
+import { pgError } from "./db/errors";
+import { randomToken } from "./tokens";
 import { isManager, type CurrentUser } from "./authz";
 import { notify } from "./notifications";
 import { formatNaira } from "./money";
@@ -34,6 +36,29 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type OrderLineInput = { productId: number; qty: number };
 
+/** A customer can have at most this many orders waiting for their server at once. */
+export const MAX_WAITING_ORDERS_PER_BILL = 5;
+
+/**
+ * Runs a transaction, retrying a few times if Postgres aborts it because of a
+ * deadlock or serialization clash with another busy-night transaction.
+ * Business errors (AppError) are never retried.
+ */
+export async function inTransaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await db.transaction(fn);
+    } catch (err) {
+      const code = pgError(err)?.code;
+      if (attempt < 5 && (code === "40P01" || code === "40001" || code === "55P03")) {
+        await new Promise((r) => setTimeout(r, 15 * attempt + Math.random() * 40));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 function canActOnStaffRecord(user: CurrentUser, staffId: number) {
   return user.id === staffId || isManager(user);
 }
@@ -41,7 +66,8 @@ function canActOnStaffRecord(user: CurrentUser, staffId: number) {
 function mergeLines(lines: OrderLineInput[]) {
   const map = new Map<number, number>();
   for (const l of lines) map.set(l.productId, (map.get(l.productId) ?? 0) + l.qty);
-  return [...map].map(([productId, qty]) => ({ productId, qty }));
+  // Always sorted by product id so concurrent transactions lock rows in the same order (no deadlocks).
+  return [...map].map(([productId, qty]) => ({ productId, qty })).sort((a, b) => a.productId - b.productId);
 }
 
 /**
@@ -152,7 +178,7 @@ async function assertAvailable(tx: Tx, lines: { productId: number; qty: number }
   const merged = mergeLines(lines);
   if (merged.length === 0) return;
   const ids = merged.map((l) => l.productId);
-  const rows = await tx.select().from(products).where(inArray(products.id, ids)).for("update");
+  const rows = await tx.select().from(products).where(inArray(products.id, ids)).orderBy(asc(products.id)).for("update");
   const reserved = await reservedQty(tx, ids);
   for (const line of merged) {
     const p = rows.find((r) => r.id === line.productId);
@@ -186,59 +212,115 @@ async function priceLines(tx: Tx, lines: OrderLineInput[]) {
   });
 }
 
+export type NewBill = {
+  staffId: number;
+  tableId?: number | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+};
+
 /**
- * Creates an order on a bill. Staff orders are accepted immediately (stock
- * reserved); customer orders wait as "pending" until the staff accepts them.
- * Stock is deducted later, when the order is served.
+ * Creates an order — on an existing open bill, or on a brand-new bill created
+ * in the same transaction (so a failed first order never leaves an empty bill).
+ * Staff orders are accepted immediately (stock reserved); customer orders wait
+ * as "pending" until the staff accepts them. Stock is deducted when served.
+ *
+ * `clientRef` makes customer submissions idempotent: resending the same order
+ * (e.g. after a Wi-Fi blip) returns the original instead of a duplicate.
  */
 export async function createOrder(input: {
-  billId: number;
+  bill: { id: number } | { create: NewBill };
   source: "customer" | "staff";
   lines: OrderLineInput[];
   note?: string | null;
   actor?: CurrentUser;
-}) {
-  return db.transaction(async (tx) => {
-    const bill = await lockOpenBill(tx, input.billId);
-    if (input.source === "staff") {
-      if (!input.actor || !canActOnStaffRecord(input.actor, bill.staffId)) {
-        throw new AppError("Only the staff member who owns this bill (or a manager) can add to it.", 403);
+  clientRef?: string | null;
+}): Promise<{ orderId: number; billId: number; accessToken: string; duplicate: boolean }> {
+  const run = () =>
+    inTransaction(async (tx) => {
+      if (input.clientRef) {
+        const [existing] = await tx
+          .select({ orderId: orders.id, billId: bills.id, accessToken: bills.accessToken })
+          .from(orders)
+          .innerJoin(bills, eq(bills.id, orders.billId))
+          .where(eq(orders.clientRef, input.clientRef))
+          .limit(1);
+        if (existing) return { ...existing, duplicate: true };
       }
-    }
-    const priced = await priceLines(tx, input.lines);
-    await assertAvailable(tx, priced);
-    const now = new Date();
-    const [order] = await tx
-      .insert(orders)
-      .values({
-        billId: bill.id,
-        staffId: bill.staffId,
-        source: input.source,
-        status: input.source === "staff" ? "accepted" : "pending",
-        acceptedAt: input.source === "staff" ? now : null,
-        note: input.note || null,
-      })
-      .returning();
-    await tx.insert(orderItems).values(priced.map((p) => ({ ...p, orderId: order.id })));
 
-    if (input.source === "customer") {
-      const count = priced.reduce((n, p) => n + p.qty, 0);
-      const total = priced.reduce((n, p) => n + p.qty * p.unitPrice, 0);
-      const [table] = bill.tableId
-        ? await tx.select({ name: loungeTables.name }).from(loungeTables).where(eq(loungeTables.id, bill.tableId))
-        : [];
-      await notify(
-        bill.staffId,
-        {
-          title: `New order${table ? ` · ${table.name}` : ""}`,
-          body: `${bill.customerName || "A customer"} ordered ${count} item${count === 1 ? "" : "s"} (${formatNaira(total)}). Tap to accept.`,
-          link: `/bills/${bill.id}`,
-        },
-        tx,
-      );
-    }
-    return order;
-  });
+      let bill;
+      if ("create" in input.bill) {
+        [bill] = await tx
+          .insert(bills)
+          .values({
+            staffId: input.bill.create.staffId,
+            tableId: input.bill.create.tableId ?? null,
+            customerName: input.bill.create.customerName || null,
+            customerPhone: input.bill.create.customerPhone || null,
+            accessToken: randomToken(16),
+          })
+          .returning();
+      } else {
+        bill = await lockOpenBill(tx, input.bill.id);
+      }
+
+      if (input.source === "staff") {
+        if (!input.actor || !canActOnStaffRecord(input.actor, bill.staffId)) {
+          throw new AppError("Only the staff member who owns this bill (or a manager) can add to it.", 403);
+        }
+      } else {
+        const [{ waiting }] = await tx
+          .select({ waiting: sql<number>`count(*)::int` })
+          .from(orders)
+          .where(and(eq(orders.billId, bill.id), eq(orders.status, "pending")));
+        if (waiting >= MAX_WAITING_ORDERS_PER_BILL) {
+          throw new AppError("You have several orders waiting. Please wait for your server to confirm them first.", 429);
+        }
+      }
+
+      const priced = await priceLines(tx, input.lines);
+      await assertAvailable(tx, priced);
+      const now = new Date();
+      const [order] = await tx
+        .insert(orders)
+        .values({
+          billId: bill.id,
+          staffId: bill.staffId,
+          source: input.source,
+          status: input.source === "staff" ? "accepted" : "pending",
+          acceptedAt: input.source === "staff" ? now : null,
+          note: input.note || null,
+          clientRef: input.clientRef || null,
+        })
+        .returning({ id: orders.id });
+      await tx.insert(orderItems).values(priced.map((p) => ({ ...p, orderId: order.id })));
+
+      if (input.source === "customer") {
+        const count = priced.reduce((n, p) => n + p.qty, 0);
+        const total = priced.reduce((n, p) => n + p.qty * p.unitPrice, 0);
+        const [table] = bill.tableId
+          ? await tx.select({ name: loungeTables.name }).from(loungeTables).where(eq(loungeTables.id, bill.tableId))
+          : [];
+        await notify(
+          bill.staffId,
+          {
+            title: `New order${table ? ` · ${table.name}` : ""}`,
+            body: `${bill.customerName || "A customer"} ordered ${count} item${count === 1 ? "" : "s"} (${formatNaira(total)}). Tap to accept.`,
+            link: `/bills/${bill.id}`,
+          },
+          tx,
+        );
+      }
+      return { orderId: order.id, billId: bill.id, accessToken: bill.accessToken, duplicate: false };
+    });
+
+  try {
+    return await run();
+  } catch (err) {
+    // Two copies of the same submission raced; the other one won — return it.
+    if (input.clientRef && pgError(err)?.constraint === "orders_client_ref_unique") return run();
+    throw err;
+  }
 }
 
 async function lockOrder(tx: Tx, orderId: number) {
@@ -248,7 +330,7 @@ async function lockOrder(tx: Tx, orderId: number) {
 }
 
 export async function acceptOrder(orderId: number, actor: CurrentUser) {
-  return db.transaction(async (tx) => {
+  return inTransaction(async (tx) => {
     const order = await lockOrder(tx, orderId);
     if (!canActOnStaffRecord(actor, order.staffId)) throw new AppError("This order belongs to another staff member.", 403);
     if (order.status !== "pending") throw new AppError(`This order is already ${order.status}.`, 409);
@@ -260,7 +342,7 @@ export async function acceptOrder(orderId: number, actor: CurrentUser) {
 }
 
 export async function rejectOrder(orderId: number, actor: CurrentUser, reason: string) {
-  return db.transaction(async (tx) => {
+  return inTransaction(async (tx) => {
     const order = await lockOrder(tx, orderId);
     if (!canActOnStaffRecord(actor, order.staffId)) throw new AppError("This order belongs to another staff member.", 403);
     if (order.status !== "pending") throw new AppError(`This order is already ${order.status}.`, 409);
@@ -269,7 +351,7 @@ export async function rejectOrder(orderId: number, actor: CurrentUser, reason: s
 }
 
 export async function markServed(orderId: number, actor: CurrentUser) {
-  return db.transaction(async (tx) => {
+  return inTransaction(async (tx) => {
     const order = await lockOrder(tx, orderId);
     if (!canActOnStaffRecord(actor, order.staffId)) throw new AppError("This order belongs to another staff member.", 403);
     if (order.status !== "accepted") throw new AppError("Only accepted orders can be marked served.", 409);
@@ -282,7 +364,7 @@ export async function markServed(orderId: number, actor: CurrentUser) {
 /** Manager-only: cancels an accepted/served order, returns any deducted stock, and tells the staff member. */
 export async function voidOrder(orderId: number, manager: CurrentUser, reason: string) {
   if (!isManager(manager)) throw new AppError("Only a manager can void an order.", 403);
-  return db.transaction(async (tx) => {
+  return inTransaction(async (tx) => {
     const order = await lockOrder(tx, orderId);
     if (!BILLABLE_ORDER_STATUSES.includes(order.status)) throw new AppError(`This order is ${order.status} and can't be voided.`, 409);
     await lockOpenBill(tx, order.billId);
@@ -317,7 +399,7 @@ export async function billTotals(billIds: number[], executor: Pick<typeof db, "s
 }
 
 export async function payBill(billId: number, actor: CurrentUser, method: PaymentMethod) {
-  return db.transaction(async (tx) => {
+  return inTransaction(async (tx) => {
     const bill = await lockOpenBill(tx, billId);
     if (!canActOnStaffRecord(actor, bill.staffId)) throw new AppError("Only the staff member who owns this bill (or a manager) can close it.", 403);
     const [pending] = await tx
@@ -349,7 +431,7 @@ export async function payBill(billId: number, actor: CurrentUser, method: Paymen
 /** Manager-only: voids a whole open bill, returning any stock that was deducted. */
 export async function voidBill(billId: number, manager: CurrentUser, reason: string) {
   if (!isManager(manager)) throw new AppError("Only a manager can void a bill.", 403);
-  return db.transaction(async (tx) => {
+  return inTransaction(async (tx) => {
     const bill = await lockOpenBill(tx, billId);
     const billOrders = await tx.select().from(orders).where(eq(orders.billId, bill.id)).for("update");
     for (const o of billOrders) {

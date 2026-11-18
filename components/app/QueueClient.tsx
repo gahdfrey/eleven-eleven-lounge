@@ -32,7 +32,7 @@ type Queue = {
 };
 
 export function QueueClient({ scopeAll }: { scopeAll: boolean }) {
-  const { data, mutate } = useSWR<Queue>(`/api/queue${scopeAll ? "" : "?scope=mine"}`, jsonFetcher, { refreshInterval: 3000 });
+  const { data, mutate } = useSWR<Queue>(`/api/queue${scopeAll ? "" : "?scope=mine"}`, jsonFetcher, { refreshInterval: 5000 });
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [rejecting, setRejecting] = useState<number | null>(null);

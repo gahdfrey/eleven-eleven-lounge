@@ -24,7 +24,10 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
     } catch {
       return; // No WebGL: the page still works, the hero just stays black.
     }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, small ? 1.5 : 1.75));
+    // Resolution starts modest on phones and is lowered further if frames run slow (see the governor in the loop).
+    const maxRatio = Math.min(window.devicePixelRatio, small ? 1.25 : 1.75);
+    let ratio = maxRatio;
+    renderer.setPixelRatio(ratio);
     renderer.setClearColor(0x000000, 1);
     mount.appendChild(renderer.domElement);
     Object.assign(renderer.domElement.style, { display: "block", width: "100%", height: "100%" });
@@ -83,7 +86,7 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
       });
 
     // ── Spiral galaxy ──────────────────────────────────────────────────────
-    const COUNT = small ? 5000 : reduced ? 6000 : 11000;
+    const COUNT = small ? 3200 : reduced ? 6000 : 11000;
     const ARMS = 4;
     const RADIUS = 7;
     const positions = new Float32Array(COUNT * 3);
@@ -110,13 +113,14 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
     galaxyGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     galaxyGeo.setAttribute("aColor", new THREE.BufferAttribute(colors, 3));
     galaxyGeo.setAttribute("aScale", new THREE.BufferAttribute(scales, 1));
-    const galaxyMat = pointMaterial(small ? 70 : 60, 0.95);
+    const GALAXY_SIZE = small ? 50 : 60;
+    const galaxyMat = pointMaterial(GALAXY_SIZE, 0.95);
     const galaxy = new THREE.Points(galaxyGeo, galaxyMat);
     galaxy.rotation.x = 0.18;
     scene.add(galaxy);
 
     // ── Distant stars ──────────────────────────────────────────────────────
-    const STARS = small ? 900 : 2000;
+    const STARS = small ? 600 : 2000;
     const starPos = new Float32Array(STARS * 3);
     const starCol = new Float32Array(STARS * 3);
     const starScale = new Float32Array(STARS);
@@ -131,7 +135,8 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
     starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
     starGeo.setAttribute("aColor", new THREE.BufferAttribute(starCol, 3));
     starGeo.setAttribute("aScale", new THREE.BufferAttribute(starScale, 1));
-    const starMat = pointMaterial(160, 0.8);
+    const STAR_SIZE = small ? 130 : 160;
+    const starMat = pointMaterial(STAR_SIZE, 0.8);
     const stars = new THREE.Points(starGeo, starMat);
     scene.add(stars);
 
@@ -252,6 +257,8 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
     timer.connect(document); // pauses time while the tab is hidden
     const look = new THREE.Vector3();
     let raf = 0;
+    let frames = 0;
+    let frameTime = 0;
     const frame = (now?: number) => {
       raf = requestAnimationFrame(frame);
       timer.update(now);
@@ -275,6 +282,25 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
 
       // Force field follows the cursor while it moves, then relaxes.
       const dt = timer.getDelta();
+
+      // Quality governor: if the last ~1.5s averaged under ~45fps, render at a lower resolution.
+      // (Skip the first seconds: shaders compiling and the intro make early frames slow.)
+      if (t > 3) {
+        frames++;
+        frameTime += dt;
+      }
+      if (frames >= 90) {
+        const avg = frameTime / frames;
+        if (avg > 1 / 45 && ratio > 0.75) {
+          ratio = Math.max(0.75, ratio - 0.25);
+          renderer.setPixelRatio(ratio);
+          galaxyMat.uniforms.uSize.value = GALAXY_SIZE * ratio;
+          starMat.uniforms.uSize.value = STAR_SIZE * ratio;
+          resize();
+        }
+        frames = 0;
+        frameTime = 0;
+      }
       const targetForce = t - lastMove < 1.5 ? 1 - ease : 0;
       force += (targetForce - force) * Math.min(1, dt * 3);
       ndc.set(pointer.x, -pointer.y);
@@ -320,9 +346,11 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
       // Scroll: fly from the galaxy's edge into the portal.
       const targetZ = 9 - ease * 8.6;
       const targetY = 2.2 - ease * 2;
-      camera.position.x += (pointer.x * 0.8 * (1 - ease) - camera.position.x) * 0.04;
-      camera.position.y += (targetY - pointer.y * 0.5 * (1 - ease) - camera.position.y) * 0.06;
-      camera.position.z += (targetZ - camera.position.z) * 0.08;
+      // Same feel at 60Hz and 120Hz: smoothing scaled by the real frame time.
+      const k = (base: number) => 1 - Math.pow(1 - base, Math.min(dt, 0.1) * 60);
+      camera.position.x += (pointer.x * 0.8 * (1 - ease) - camera.position.x) * k(0.04);
+      camera.position.y += (targetY - pointer.y * 0.5 * (1 - ease) - camera.position.y) * k(0.08);
+      camera.position.z += (targetZ - camera.position.z) * k(0.14);
       // Start looking above the portal so it sits under the title, then centre on it as we fly in.
       look.set(0, 0.2 + 1.6 * (1 - ease), 0);
       camera.lookAt(look);

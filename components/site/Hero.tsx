@@ -23,7 +23,7 @@ export function Hero() {
 
   const textOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
   const textScale = useTransform(scrollYProgress, [0, 0.45], [1, 1.25]);
-  const textBlur = useTransform(scrollYProgress, [0, 0.4], ["blur(0px)", "blur(12px)"]);
+  const textY = useTransform(scrollYProgress, [0, 0.4], [0, -60]);
   const hintOpacity = useTransform(scrollYProgress, [0, 0.1], [1, 0]);
   const fade = useTransform(scrollYProgress, [0.82, 1], [0, 1]);
 
@@ -47,7 +47,7 @@ export function Hero() {
       <div className="sticky top-0 h-[100svh] overflow-hidden" onClick={makeWish} data-cursor="Wish">
         <PortalScene progressRef={progressRef} />
 
-        <motion.div style={{ opacity: textOpacity, scale: textScale, filter: textBlur }} className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+        <motion.div style={{ opacity: textOpacity, scale: textScale, y: textY }} className="pointer-events-none absolute will-change-transform inset-0 flex flex-col items-center justify-center px-6 text-center">
           <motion.p
             initial={{ opacity: 0, letterSpacing: "1em" }}
             animate={{ opacity: 1, letterSpacing: "0.6em" }}
@@ -88,7 +88,7 @@ export function Hero() {
               <a href="#reserve" data-cursor="Book" className="inline-flex h-12 items-center rounded-full bg-accent px-7 text-xs font-bold uppercase tracking-[0.25em] text-black transition-colors hover:bg-accent-strong">Reserve a table</a>
             </Magnetic>
             <Magnetic>
-              <a href="#nights" data-cursor="Explore" className="inline-flex h-12 items-center rounded-full border border-white/30 px-7 text-xs font-bold uppercase tracking-[0.25em] text-white backdrop-blur-sm transition-colors hover:border-accent hover:text-accent">The nights</a>
+              <a href="#nights" data-cursor="Explore" className="inline-flex h-12 items-center rounded-full border border-white/30 px-7 text-xs font-bold uppercase tracking-[0.25em] text-white transition-colors hover:border-accent hover:text-accent">The nights</a>
             </Magnetic>
           </motion.div>
         </motion.div>
@@ -116,7 +116,7 @@ export function Hero() {
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.5 }}
               onAnimationComplete={() => setTimeout(() => setToast((t) => (t === toast ? null : t)), 1800)}
-              className="pointer-events-none absolute bottom-36 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-accent/50 bg-black/70 px-5 py-2 text-[10px] uppercase tracking-[0.3em] text-white backdrop-blur-md"
+              className="pointer-events-none absolute bottom-36 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-accent/50 bg-black/70 px-5 py-2 text-[10px] uppercase tracking-[0.3em] text-white"
               role="status"
             >
               ✦ {wishes === 1 ? "Your wish is on its way" : `${wishes} wishes sent tonight`}

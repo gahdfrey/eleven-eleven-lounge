@@ -56,7 +56,7 @@ export function VenueStatusPill({ className }: { className?: string }) {
   }, []);
   if (!s) return null;
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.8 }} className={cx("flex items-center gap-3 rounded-full border border-white/10 bg-black/60 px-4 py-2 text-[10px] uppercase tracking-[0.25em] backdrop-blur-md", className)}>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.8 }} className={cx("flex items-center gap-3 rounded-full border border-white/10 bg-black/60 px-4 py-2 text-[10px] uppercase tracking-[0.25em]", className)}>
       <span className="relative flex h-2 w-2">
         {s.open && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />}
         <span className={cx("relative inline-flex h-2 w-2 rounded-full", s.open ? "bg-accent" : "bg-zinc-500")} />
@@ -203,7 +203,7 @@ export function WishMoment() {
           initial={{ opacity: 0, y: -30, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20 }}
-          className="fixed left-1/2 top-24 z-[80] -translate-x-1/2 rounded-full border border-accent/60 bg-black/90 px-6 py-3 text-center backdrop-blur-md"
+          className="fixed left-1/2 top-24 z-[80] -translate-x-1/2 rounded-full border border-accent/60 bg-black/90 px-6 py-3 text-center"
           role="status"
         >
           <p className="font-display text-sm font-bold uppercase tracking-[0.3em] text-white">It&apos;s 11<span className="text-accent">:</span>11</p>

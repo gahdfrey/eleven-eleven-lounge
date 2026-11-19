@@ -20,7 +20,7 @@ export default function ClockScene({ progressRef }: { progressRef: React.RefObje
     } catch {
       return;
     }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, window.innerWidth < 768 ? 1.25 : 1.75));
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
     Object.assign(renderer.domElement.style, { display: "block", width: "100%", height: "100%" });

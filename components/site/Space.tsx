@@ -12,7 +12,7 @@ const STEP = 360 / SPACES.length;
 function SpaceIcon({ kind }: { kind: (typeof SPACES)[number]["icon"] }) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   return (
-    <svg viewBox="0 0 64 64" className="h-14 w-14 text-accent" aria-hidden="true">
+    <svg viewBox="0 0 64 64" className="h-11 w-11 text-accent sm:h-14 sm:w-14" aria-hidden="true">
       {kind === "floor" && <><circle cx="32" cy="32" r="8" {...common} /><circle cx="32" cy="32" r="17" {...common} /><circle cx="32" cy="32" r="26" {...common} strokeDasharray="3 5" /></>}
       {kind === "vip" && <><path d="M12 44 L16 22 L26 32 L32 16 L38 32 L48 22 L52 44 Z" {...common} /><path d="M12 50 H52" {...common} /></>}
       {kind === "booth" && <><path d="M14 18 V40 Q14 50 24 50 H40 Q50 50 50 40 V18" {...common} /><circle cx="32" cy="34" r="6" {...common} /></>}
@@ -71,10 +71,10 @@ export function Space() {
           </div>
         </div>
 
-        <div className="relative flex flex-1 items-center justify-center [--ring-r:230px] [perspective:1100px] sm:[--ring-r:340px] lg:[--ring-r:470px] lg:[perspective:1600px]">
+        <div className="relative flex flex-1 items-center justify-center pt-[min(4rem,6svh)] [--ring-r:210px] [perspective:1100px] sm:pt-0 sm:[--ring-r:340px] lg:[--ring-r:470px] lg:[perspective:1600px]">
           {/* A drawn floor line under the ring. */}
           <div aria-hidden="true" className="absolute bottom-[12%] h-24 w-[min(90vw,62rem)] rounded-[50%] border border-accent/20" />
-          <motion.div className="relative mt-6 h-[min(22rem,52svh)] w-[13.5rem] [transform-style:preserve-3d] sm:h-[min(25rem,52svh)] sm:w-[16rem] lg:w-[18rem]" style={{ rotateY: ringRotate }}>
+          <motion.div className="relative mt-6 h-[min(19.5rem,40svh)] w-[12.5rem] [transform-style:preserve-3d] will-change-transform sm:h-[min(25rem,52svh)] sm:w-[16rem] lg:w-[18rem]" style={{ rotateY: ringRotate }}>
             {SPACES.map((s, i) => {
               const on = i === active;
               return (
@@ -92,9 +92,9 @@ export function Space() {
                   </div>
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent">{s.tag}</p>
-                    <h3 className="mt-3 font-display text-xl font-bold uppercase leading-tight text-white sm:text-2xl">{s.name}</h3>
-                    <p className="mt-3 text-sm leading-relaxed text-zinc-400">{s.body}</p>
-                    <p className="mt-4 border-t border-line pt-3 font-mono text-xs text-zinc-300">{s.capacity}</p>
+                    <h3 className="mt-2 font-display text-lg font-bold uppercase leading-tight text-white sm:mt-3 sm:text-2xl">{s.name}</h3>
+                    <p className="mt-2 text-[13px] leading-relaxed text-zinc-400 sm:mt-3 sm:text-sm">{s.body}</p>
+                    <p className="mt-3 border-t border-line pt-3 font-mono text-xs text-zinc-300 sm:mt-4">{s.capacity}</p>
                   </div>
                 </div>
               );
@@ -103,7 +103,7 @@ export function Space() {
         </div>
 
         {/* Progress ticks. */}
-        <div className="flex justify-center gap-2 pb-10">
+        <div className="flex justify-center gap-2 pb-6 sm:pb-10">
           {SPACES.map((s, i) => (
             <span key={s.name} className={cx("h-1 rounded-full transition-all duration-500", i === active ? "w-8 bg-accent" : "w-3 bg-zinc-700")} />
           ))}

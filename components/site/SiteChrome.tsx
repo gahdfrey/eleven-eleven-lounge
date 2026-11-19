@@ -57,7 +57,7 @@ export function SiteNav() {
       <motion.header
         animate={{ y: hidden ? -100 : 0 }}
         transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-        className={cx("fixed inset-x-0 top-0 z-50 transition-colors duration-500", solid ? "border-b border-line bg-black/85 backdrop-blur-md" : "border-b border-transparent")}
+        className={cx("fixed inset-x-0 top-0 z-50 transition-colors duration-500", solid ? "border-b border-line bg-black/95 md:bg-black/85 md:backdrop-blur-md" : "border-b border-transparent")}
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link href="/" aria-label={`${SITE.name} home`}><SiteLogo /></Link>

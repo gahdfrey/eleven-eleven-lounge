@@ -20,12 +20,13 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: !small, powerPreference: "high-performance" });
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     } catch {
       return; // No WebGL: the page still works, the hero just stays black.
     }
     // Resolution starts modest on phones and is lowered further if frames run slow (see the governor in the loop).
-    const maxRatio = Math.min(window.devicePixelRatio, small ? 1.25 : 1.75);
+    const maxRatio = Math.min(window.devicePixelRatio, 2);
+    const minRatio = Math.min(window.devicePixelRatio, 1.5);
     let ratio = maxRatio;
     renderer.setPixelRatio(ratio);
     renderer.setClearColor(0x000000, 1);
@@ -42,6 +43,7 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
       new THREE.ShaderMaterial({
         uniforms: {
           uSize: { value: size * renderer.getPixelRatio() },
+          uMaxSize: { value: 28 * renderer.getPixelRatio() },
           uOpacity: { value: opacity },
           uTime: { value: 0 },
           uPointer: { value: new THREE.Vector3(999, 0, 999) },
@@ -52,6 +54,7 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
           attribute vec3 aColor;
           uniform float uSize;
           uniform float uTime;
+          uniform float uMaxSize;
           uniform vec3 uPointer;
           uniform float uForce;
           varying vec3 vColor;
@@ -67,7 +70,7 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
             vec4 mv = viewMatrix * world;
             gl_Position = projectionMatrix * mv;
             vTwinkle = 0.65 + 0.35 * sin(uTime * 1.7 + position.x * 3.1 + position.z * 2.3);
-            gl_PointSize = uSize * aScale * (1.0 / -mv.z);
+            gl_PointSize = min(uSize * aScale * (1.0 / -mv.z), uMaxSize);
             vColor = aColor;
           }`,
         fragmentShader: /* glsl */ `
@@ -143,14 +146,15 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
     // ── The portal: two thin rings, an inner halo of ticks, and a black core ─
     const portal = new THREE.Group();
     const ringMat = new THREE.MeshBasicMaterial({ color: 0xc840e0 });
-    const ringA = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.012, 16, 220), ringMat);
-    const ringB = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.006, 16, 220), new THREE.MeshBasicMaterial({ color: 0xd466ea, transparent: true, opacity: 0.6 }));
+    const line = small ? 1.6 : 1; // thin lines alias on small, dense screens
+    const ringA = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.012 * line, 16, 256), ringMat);
+    const ringB = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.006 * line, 16, 256), new THREE.MeshBasicMaterial({ color: 0xd466ea, transparent: true, opacity: 0.6 }));
     const core = new THREE.Mesh(new THREE.CircleGeometry(1.5, 96), new THREE.MeshBasicMaterial({ color: 0x000000 }));
     // 12 clock ticks around the ring (11:11 is a time, after all).
     const ticks = new THREE.Group();
     for (let i = 0; i < 12; i++) {
       const long = i % 3 === 0;
-      const tick = new THREE.Mesh(new THREE.BoxGeometry(0.018, long ? 0.22 : 0.12, 0.018), ringMat);
+      const tick = new THREE.Mesh(new THREE.BoxGeometry(0.018 * line, long ? 0.22 : 0.12, 0.018), ringMat);
       const a = (i / 12) * Math.PI * 2;
       tick.position.set(Math.sin(a) * 1.3, Math.cos(a) * 1.3, 0.01);
       tick.rotation.z = -a;
@@ -165,8 +169,8 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
       pivot.add(bar);
       return pivot;
     };
-    const hourHand = makeHand(0.78, 0.055, 0.03);
-    const minuteHand = makeHand(1.12, 0.03, 0.04);
+    const hourHand = makeHand(0.78, 0.055 * (small ? 1.25 : 1), 0.03);
+    const minuteHand = makeHand(1.12, 0.03 * line, 0.04);
     const cap = new THREE.Mesh(new THREE.CircleGeometry(0.06, 32), ringMat);
     cap.position.z = 0.05;
     // Angles clockwise from 12: minute hand at 11 minutes (66°), hour hand just past 11 (335.5°).
@@ -291,11 +295,13 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
       }
       if (frames >= 90) {
         const avg = frameTime / frames;
-        if (avg > 1 / 45 && ratio > 0.75) {
-          ratio = Math.max(0.75, ratio - 0.25);
+        if (avg > 1 / 40 && ratio > minRatio) {
+          ratio = Math.max(minRatio, ratio - 0.25);
           renderer.setPixelRatio(ratio);
           galaxyMat.uniforms.uSize.value = GALAXY_SIZE * ratio;
           starMat.uniforms.uSize.value = STAR_SIZE * ratio;
+          galaxyMat.uniforms.uMaxSize.value = 28 * ratio;
+          starMat.uniforms.uMaxSize.value = 28 * ratio;
           resize();
         }
         frames = 0;

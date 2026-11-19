@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { getMenu } from "@/lib/menu";
-import { PublicHeader } from "@/components/public/PublicHeader";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { changeFingerprint } from "@/lib/live";
 import { MenuView } from "@/components/public/MenuView";
+import { SitePage } from "@/components/site/SitePage";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Menu" };
@@ -11,14 +11,11 @@ export const metadata: Metadata = { title: "Menu" };
 export default async function MenuPage() {
   const categories = await getMenu();
   return (
-    <>
-      <PublicHeader />
+    <SitePage kicker="From the bar" title="The menu" intro="At the lounge? Scan the QR code on your table to order straight from your phone.">
       <LiveRefresh version={await changeFingerprint("public")} endpoint="/api/public/live" intervalMs={10000} />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight text-white">Menu</h1>
-        <p className="mb-8 mt-1 text-sm text-muted">Scan the QR code on your table to order.</p>
-        <MenuView categories={categories} />
-      </main>
-    </>
+      <div className="mx-auto max-w-3xl px-5 pb-28 sm:px-8">
+        <MenuView categories={categories} stickyTop="top-16" />
+      </div>
+    </SitePage>
   );
 }

@@ -7,6 +7,7 @@ import { SiteShell } from "@/components/site/SiteShell";
 import { Hero } from "@/components/site/Hero";
 import { About, Events, Experience, Faq, MenuTeaser, Nights, SiteFooter } from "@/components/site/Sections";
 import { Reserve } from "@/components/site/Reserve";
+import { Space } from "@/components/site/Space";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +24,12 @@ export default async function Home() {
 
   return (
     <div className={`${display.variable} overflow-x-clip bg-black text-white`}>
-      <SiteShell>
+      <SiteShell home>
         <main>
           <Hero />
           <About />
           <Nights next={next} />
+          <Space />
           <Experience />
           <MenuTeaser menu={menu} />
           <Reserve nights={nights.map((n) => ({ date: n.date, title: n.night.title, dayName: n.night.dayName, day: n.night.day }))} />

@@ -7,14 +7,14 @@ import { CategoryTabs, categoryKey } from "../CategoryTabs";
 import { EmptyState } from "../ui";
 
 /** Read-only menu (the /menu page), one category tab at a time. Ordering happens from a table QR code. */
-export function MenuView({ categories }: { categories: MenuCategory[] }) {
+export function MenuView({ categories, stickyTop = "top-14" }: { categories: MenuCategory[]; stickyTop?: string }) {
   const [tab, setTab] = useState(() => (categories[0] ? categoryKey(categories[0]) : ""));
   if (categories.length === 0) return <EmptyState title="Menu coming soon" description="Check back shortly." />;
   const active = categories.find((c) => categoryKey(c) === tab) ?? categories[0];
 
   return (
     <div>
-      <CategoryTabs categories={categories} active={categoryKey(active)} onChange={setTab} className="top-14" />
+      <CategoryTabs categories={categories} active={categoryKey(active)} onChange={setTab} className={stickyTop} />
       <ul role="tabpanel" aria-label={active.name} className="divide-y divide-line/70">
         {active.items.map((item) => (
           <li key={item.id} className="flex items-start justify-between gap-4 py-3.5">

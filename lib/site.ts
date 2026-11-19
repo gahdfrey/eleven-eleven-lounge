@@ -7,6 +7,8 @@ export const SITE = {
   fullName: "Eleven Eleven Lounge",
   tagline: "The time of your life",
   city: "Nairobi",
+  /** The venue's clock, for the website's live "open now / doors in" status. */
+  timezone: "Africa/Nairobi",
   address: "3rd Floor, Broadwalk Mall, Ojijo Road",
   phone: "+254 116 111 144",
   /** Digits only, for wa.me links. */
@@ -86,6 +88,16 @@ export const EXPERIENCE = [
     body: "Celestial lighting, futuristic design and a crowd that dresses for the occasion. Built to feel like nowhere else.",
   },
 ];
+
+/** Areas of the venue for the "Inside 11:11" carousel. Edit freely. */
+export const SPACES = [
+  { name: "The Floor", tag: "Dance floor", capacity: "Standing", body: "The heart of the room. Under the celestial rig, a few steps from the DJ, where the night happens loudest.", icon: "floor" },
+  { name: "VIP Section", tag: "Raised", capacity: "6–12 guests", body: "A raised section with its own host, bottle service and a clear view over the whole floor.", icon: "vip" },
+  { name: "Booths", tag: "Private", capacity: "4–8 guests", body: "Curved booths along the wall: close enough to the music, quiet enough to talk.", icon: "booth" },
+  { name: "The Bar", tag: "High tables", capacity: "2–4 guests", body: "Bar seats and high tables for smaller groups who like to watch the room move.", icon: "bar" },
+  { name: "DJ Booth", tag: "Sound", capacity: "Resident & guest DJs", body: "Afrobeats, Amapiano, Hip-Hop and Top 40, played by DJs who read the room until close.", icon: "dj" },
+  { name: "The Entrance", tag: "Arrival", capacity: "Doors 10PM", body: "Quote your reservation code at the door and your host walks you straight to your table.", icon: "door" },
+] as const;
 
 export const FAQS = [
   { q: "What are your opening hours?", a: "We open Thursday to Sunday. Doors open at 10PM and the night runs until 6AM." },

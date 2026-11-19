@@ -37,16 +37,31 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
     // ── Soft round points (shared shader) ─────────────────────────────────
     const pointMaterial = (size: number, opacity: number) =>
       new THREE.ShaderMaterial({
-        uniforms: { uSize: { value: size * renderer.getPixelRatio() }, uOpacity: { value: opacity }, uTime: { value: 0 } },
+        uniforms: {
+          uSize: { value: size * renderer.getPixelRatio() },
+          uOpacity: { value: opacity },
+          uTime: { value: 0 },
+          uPointer: { value: new THREE.Vector3(999, 0, 999) },
+          uForce: { value: 0 },
+        },
         vertexShader: /* glsl */ `
           attribute float aScale;
           attribute vec3 aColor;
           uniform float uSize;
           uniform float uTime;
+          uniform vec3 uPointer;
+          uniform float uForce;
           varying vec3 vColor;
           varying float vTwinkle;
           void main() {
-            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            // Stars part around the cursor like a hand through dust.
+            vec4 world = modelMatrix * vec4(position, 1.0);
+            vec2 away = world.xz - uPointer.xz;
+            float dist = length(away);
+            float push = uForce * smoothstep(2.2, 0.0, dist);
+            world.xz += normalize(away + 0.0001) * push * 1.1;
+            world.y += push * 0.45;
+            vec4 mv = viewMatrix * world;
             gl_Position = projectionMatrix * mv;
             vTwinkle = 0.65 + 0.35 * sin(uTime * 1.7 + position.x * 3.1 + position.z * 2.3);
             gl_PointSize = uSize * aScale * (1.0 / -mv.z);
@@ -182,6 +197,52 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
     };
     window.addEventListener("pointermove", onMove, { passive: true });
 
+    // Where the cursor touches the galaxy's plane, for the force field.
+    const raycaster = new THREE.Raycaster();
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const hit = new THREE.Vector3();
+    const ndc = new THREE.Vector2();
+    let lastMove = -10;
+    let force = 0;
+    const onActivity = () => { lastMove = timer.getElapsed(); };
+    window.addEventListener("pointermove", onActivity, { passive: true });
+
+    // ── Shooting stars: ambient ones, plus a "wish" sent into the portal on click ──
+    const TRAIL = 28;
+    type Streak = { line: THREE.Line; from: THREE.Vector3; dir: THREE.Vector3; speed: number; length: number; age: number; life: number; color: THREE.Color };
+    const streaks: Streak[] = [];
+    const spawnStreak = (from: THREE.Vector3, to: THREE.Vector3, life: number, color: THREE.Color) => {
+      if (streaks.length > 10) return;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(TRAIL * 3), 3));
+      geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(TRAIL * 3), 3));
+      const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+      line.frustumCulled = false;
+      scene.add(line);
+      const dir = to.clone().sub(from);
+      const length = dir.length();
+      streaks.push({ line, from: from.clone(), dir: dir.normalize(), speed: length / life, length: Math.min(3.2, length * 0.35), age: 0, life, color });
+    };
+    const white = new THREE.Color("#fbeaff");
+    const lilac = new THREE.Color("#e9a8f5");
+    const ambientStar = () => {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const from = new THREE.Vector3(side * (8 + Math.random() * 10), 6 + Math.random() * 6, -10 - Math.random() * 10);
+      const to = from.clone().add(new THREE.Vector3(-side * (10 + Math.random() * 8), -6 - Math.random() * 4, 4));
+      spawnStreak(from, to, 1.1 + Math.random() * 0.6, white);
+    };
+    let nextAmbient = 3 + Math.random() * 4;
+    let pulse = 0;
+    const onWish = (e: Event) => {
+      const { x, y } = (e as CustomEvent<{ x: number; y: number }>).detail;
+      // From the point you clicked (a little in front of the camera) into the portal.
+      const from = new THREE.Vector3(x, y, 0.4).unproject(camera);
+      const dirToFrom = from.sub(camera.position).normalize().multiplyScalar(5).add(camera.position);
+      spawnStreak(dirToFrom, portal.position.clone(), 0.9, lilac);
+      setTimeout(() => { pulse = 1; }, 900);
+    };
+    window.addEventListener("portal:wish", onWish);
+
     let visible = true;
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; });
     io.observe(mount);
@@ -211,6 +272,50 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
       setTime(Math.pow(1 - s, 3));
       galaxyMat.uniforms.uTime.value = t;
       starMat.uniforms.uTime.value = t;
+
+      // Force field follows the cursor while it moves, then relaxes.
+      const dt = timer.getDelta();
+      const targetForce = t - lastMove < 1.5 ? 1 - ease : 0;
+      force += (targetForce - force) * Math.min(1, dt * 3);
+      ndc.set(pointer.x, -pointer.y);
+      raycaster.setFromCamera(ndc, camera);
+      if (raycaster.ray.intersectPlane(plane, hit)) galaxyMat.uniforms.uPointer.value.lerp(hit, 0.2);
+      galaxyMat.uniforms.uForce.value = force;
+
+      // Shooting stars.
+      if (t > nextAmbient) {
+        ambientStar();
+        nextAmbient = t + 5 + Math.random() * 7;
+      }
+      for (let i = streaks.length - 1; i >= 0; i--) {
+        const st = streaks[i];
+        st.age += dt;
+        const k = st.age / st.life;
+        const pos = st.line.geometry.getAttribute("position") as THREE.BufferAttribute;
+        const col = st.line.geometry.getAttribute("color") as THREE.BufferAttribute;
+        const head = st.from.clone().addScaledVector(st.dir, Math.min(st.age, st.life) * st.speed);
+        const fade = k < 0.8 ? 1 : Math.max(0, 1 - (k - 0.8) / 0.4);
+        for (let j = 0; j < TRAIL; j++) {
+          const f = j / (TRAIL - 1);
+          const p = head.clone().addScaledVector(st.dir, -f * st.length * Math.min(1, k * 3));
+          pos.setXYZ(j, p.x, p.y, p.z);
+          const a = (1 - f) * (1 - f) * fade;
+          col.setXYZ(j, st.color.r * a, st.color.g * a, st.color.b * a);
+        }
+        pos.needsUpdate = true;
+        col.needsUpdate = true;
+        if (k > 1.2) {
+          scene.remove(st.line);
+          st.line.geometry.dispose();
+          (st.line.material as THREE.Material).dispose();
+          streaks.splice(i, 1);
+        }
+      }
+      // The portal rings swell when a wish arrives.
+      pulse = Math.max(0, pulse - dt * 1.4);
+      const swell = 1 + Math.sin(Math.min(1, 1 - pulse) * Math.PI) * 0.18 * (pulse > 0 ? 1 : 0);
+      ringA.scale.setScalar(swell);
+      ringB.scale.setScalar(1 + (swell - 1) * 1.6);
 
       // Scroll: fly from the galaxy's edge into the portal.
       const targetZ = 9 - ease * 8.6;
@@ -246,6 +351,8 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
       ro.disconnect();
       io.disconnect();
       window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointermove", onActivity);
+      window.removeEventListener("portal:wish", onWish);
       scene.traverse((o) => {
         const m = o as THREE.Mesh;
         m.geometry?.dispose();

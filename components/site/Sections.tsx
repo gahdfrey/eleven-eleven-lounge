@@ -147,6 +147,45 @@ export function Nights({ next }: { next: Record<number, string> }) {
 
 // ─── Experience ─────────────────────────────────────────────────────────────
 
+/** Small living illustrations for the three experience cards (solid strokes and fills only). */
+function ExperienceVisual({ n }: { n: string }) {
+  if (n === "01") {
+    // Equalizer: bars bounce at different speeds.
+    return (
+      <div className="flex h-24 items-end gap-1.5" aria-hidden="true">
+        {Array.from({ length: 16 }, (_, i) => (
+          <span key={i} className="eq-bar w-1.5 origin-bottom rounded-full bg-accent" style={{ height: `${30 + ((i * 37) % 70)}%`, animationDuration: `${0.6 + ((i * 13) % 9) / 10}s`, animationDelay: `${-(i % 5) * 0.17}s` }} />
+        ))}
+      </div>
+    );
+  }
+  if (n === "02") {
+    // A table with a host orbiting it.
+    return (
+      <svg viewBox="0 0 120 96" className="h-24 w-auto" aria-hidden="true">
+        <circle cx="60" cy="48" r="40" fill="none" stroke="#3f3f46" strokeDasharray="2 5" />
+        <circle cx="60" cy="48" r="14" fill="none" stroke="#c840e0" strokeWidth="1.5" />
+        {[0, 72, 144, 216, 288].map((a) => (
+          // Rounded: server and browser trig can differ in the last decimal, which breaks hydration.
+          <circle key={a} cx={(60 + Math.cos((a * Math.PI) / 180) * 24).toFixed(2)} cy={(48 + Math.sin((a * Math.PI) / 180) * 24).toFixed(2)} r="3" fill="#3f3f46" />
+        ))}
+        <g className="orbit-host" style={{ transformOrigin: "60px 48px" }}>
+          <circle cx="100" cy="48" r="4.5" fill="#c840e0" />
+        </g>
+      </svg>
+    );
+  }
+  // Celestial lighting: stars that twinkle.
+  return (
+    <svg viewBox="0 0 120 96" className="h-24 w-auto" aria-hidden="true">
+      {[[14, 20, 2], [40, 60, 1.5], [62, 18, 2.5], [88, 44, 1.5], [104, 16, 2], [30, 84, 1.2], [76, 78, 2], [110, 74, 1.4], [52, 40, 1]].map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill={i % 3 === 0 ? "#c840e0" : "#f4f4f5"} className="twinkle" style={{ animationDelay: `${i * 0.37}s` }} />
+      ))}
+      <path d="M62 8 L64 16 L72 18 L64 20 L62 28 L60 20 L52 18 L60 16 Z" fill="#c840e0" className="twinkle" />
+    </svg>
+  );
+}
+
 export function Experience() {
   return (
     <section id="experience" className="px-5 py-28 sm:px-8 sm:py-40">
@@ -167,6 +206,7 @@ export function Experience() {
                     <span className="font-mono text-sm text-accent">{e.n}</span>
                     <span className="text-[10px] font-semibold uppercase tracking-[0.35em] text-muted">{e.kicker}</span>
                   </div>
+                  <div className="my-8"><ExperienceVisual n={e.n} /></div>
                   <div>
                     <h3 className="font-display text-2xl font-bold uppercase text-white">{e.title}</h3>
                     <p className="mt-4 leading-relaxed text-zinc-400">{e.body}</p>
@@ -252,17 +292,18 @@ export function MenuTeaser({ menu }: { menu: MenuCategory[] }) {
 
 type EventItem = { id: number; title: string; description: string | null; startsAt: string; entry: string | null };
 
-export function Events({ events }: { events: EventItem[] }) {
+/** Upcoming events. `bare` drops the section heading (for the /events page, which has its own). */
+export function Events({ events, bare = false }: { events: EventItem[]; bare?: boolean }) {
   return (
-    <section id="events" className="px-5 py-28 sm:px-8 sm:py-36">
+    <section id={bare ? undefined : "events"} className={bare ? "px-5 pb-28 sm:px-8" : "px-5 py-28 sm:px-8 sm:py-36"}>
       <div className="mx-auto max-w-7xl">
-        <Kicker>Coming up</Kicker>
-        <div className="mb-12 flex flex-wrap items-end justify-between gap-6">
+        {!bare && <Kicker>Coming up</Kicker>}
+        {!bare && <div className="mb-12 flex flex-wrap items-end justify-between gap-6">
           <RevealText as="h2" text="Special events" className="font-display text-[2.1rem] min-[400px]:text-5xl font-bold uppercase text-white sm:text-7xl" />
           <Link href="/events" className="group inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-accent">
             All events <ArrowUpRight size={16} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Link>
-        </div>
+        </div>}
         {events.length === 0 ? (
           <FadeUp className="rounded-3xl border border-line p-10 text-center">
             <p className="font-display text-xl uppercase text-white">New dates are on the way</p>

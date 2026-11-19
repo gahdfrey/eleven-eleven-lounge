@@ -52,7 +52,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 /* ── Public website ───────────────────────────────────────────────────────── */
-html { scroll-behavior: smooth; }
+html:not(.lenis) { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-100%); } }
@@ -64,3 +64,12 @@ html { scroll-behavior: smooth; }
   .site-cursor-on, .site-cursor-on a, .site-cursor-on button, .site-cursor-on [role="button"] { cursor: none; }
   .site-cursor-on input, .site-cursor-on textarea, .site-cursor-on select { cursor: auto; }
 }
+
+/* Experience card illustrations. */
+@keyframes eq { 0%, 100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
+.eq-bar { animation: eq 1s ease-in-out infinite; }
+@keyframes orbit { to { transform: rotate(360deg); } }
+.orbit-host { animation: orbit 6s linear infinite; }
+@keyframes twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+.twinkle { animation: twinkle 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .eq-bar, .orbit-host, .twinkle { animation: none; } }

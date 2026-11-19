@@ -8,6 +8,7 @@ import { api, isNetworkError, randomId } from "@/lib/client";
 import { ARRIVAL_TIMES, OCCASIONS, SEATING_LABELS, SITE, formatArrival, formatNightDate, whatsappLink } from "@/lib/site";
 import { cx } from "../ui";
 import { RevealText } from "./motion";
+import { Ticket, type TicketData } from "./Ticket";
 
 const ClockScene = dynamic(() => import("./ClockScene"), { ssr: false });
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -33,6 +34,11 @@ export function Reserve({ nights }: { nights: NightOption[] }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Done | null>(null);
   const [ref, setRef] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  // Once the guest starts choosing, the clock gives way to their live ticket.
+  const touched = name !== "" || night !== (nights[0]?.date ?? "") || time !== "22:30" || party !== 2 || seating !== "standard" || occasion !== null;
+  const titleFor = (d: string) => nights.find((n) => n.date === d)?.title ?? formatNightDate(d);
+  const ticket: TicketData = { name, night, nightTitle: titleFor(night), time, party, seating, occasion };
 
   // "Book" on a night card picks that weekday's next date.
   useEffect(() => {
@@ -95,8 +101,17 @@ export function Reserve({ nights }: { nights: NightOption[] }) {
           <p className="mb-5 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.45em] text-accent"><span className="h-px w-8 bg-accent" />Secure your spot</p>
           <RevealText as="h2" text="Reserve a table" className="font-display text-[2.1rem] min-[400px]:text-5xl font-bold uppercase leading-[1.05] text-white sm:text-6xl" />
           <p className="mt-6 max-w-md text-lg text-zinc-400">Arrive ready. Book ahead and your table and host are waiting when you walk in.</p>
-          <div className="mx-auto mt-6 aspect-square w-full max-w-md lg:mt-10">
-            <ClockScene progressRef={progressRef} />
+          <div className="relative mx-auto mt-6 aspect-square w-full max-w-md lg:mt-10">
+            <motion.div className="absolute inset-0" animate={{ opacity: touched || done ? 0.25 : 1, scale: touched || done ? 0.8 : 1, y: touched || done ? -40 : 0 }} transition={{ duration: 0.8, ease: EASE }}>
+              <ClockScene progressRef={progressRef} />
+            </motion.div>
+            <AnimatePresence>
+              {(touched || done) && (
+                <motion.div className="absolute inset-x-0 bottom-[14%] hidden lg:block" initial={{ opacity: 0, y: 40, rotateX: -40 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} exit={{ opacity: 0, y: 30 }} transition={{ duration: 0.8, ease: EASE }}>
+                  <Ticket t={done ? { ...ticket, name: done.name, night: done.night, nightTitle: titleFor(done.night), time: done.arrivalTime, party: done.partySize, code: done.reference } : ticket} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -117,8 +132,9 @@ export function Reserve({ nights }: { nights: NightOption[] }) {
                 <div className="mt-8 rounded-2xl border border-line bg-black p-6 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-muted">Your reservation code</p>
                   <p className="mt-3 font-display text-4xl font-bold tracking-[0.2em] text-accent">{done.reference}</p>
-                  <p className="mt-3 text-xs text-muted">Quote it at the door.</p>
+                  <p className="mt-3 text-xs text-muted">Quote it at the door. A screenshot of your ticket works too.</p>
                 </div>
+                <Ticket className="mt-6 lg:hidden" t={{ ...ticket, name: done.name, night: done.night, nightTitle: titleFor(done.night), time: done.arrivalTime, party: done.partySize, code: done.reference }} />
                 <div className="mt-8 flex flex-wrap gap-3">
                   <a
                     href={whatsappLink(`Hi ${SITE.name}, I just booked a table. My reservation code is ${done.reference}.`)}
@@ -128,7 +144,7 @@ export function Reserve({ nights }: { nights: NightOption[] }) {
                   >
                     Message us on WhatsApp
                   </a>
-                  <button type="button" onClick={() => setDone(null)} className="inline-flex h-12 items-center rounded-full border border-white/20 px-6 text-xs font-bold uppercase tracking-[0.2em] text-white hover:border-accent">
+                  <button type="button" onClick={() => { setDone(null); setName(""); }} className="inline-flex h-12 items-center rounded-full border border-white/20 px-6 text-xs font-bold uppercase tracking-[0.2em] text-white hover:border-accent">
                     Book another
                   </button>
                 </div>
@@ -176,7 +192,7 @@ export function Reserve({ nights }: { nights: NightOption[] }) {
 
                 <Step n="04" title="Your details">
                   <div className="grid gap-6 sm:grid-cols-2">
-                    <label className="block"><span className="sr-only">Full name</span><input name="name" required minLength={2} maxLength={80} autoComplete="name" placeholder="Full name" className={fieldClass} /></label>
+                    <label className="block"><span className="sr-only">Full name</span><input name="name" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={80} autoComplete="name" placeholder="Full name" className={fieldClass} /></label>
                     <label className="block"><span className="sr-only">Phone or WhatsApp</span><input name="phone" required type="tel" maxLength={20} autoComplete="tel" placeholder="Phone / WhatsApp" className={fieldClass} /></label>
                     <label className="block sm:col-span-2"><span className="sr-only">Email (optional)</span><input name="email" type="email" maxLength={120} autoComplete="email" placeholder="Email (optional)" className={fieldClass} /></label>
                   </div>
@@ -189,6 +205,8 @@ export function Reserve({ nights }: { nights: NightOption[] }) {
                   {/* Honeypot: hidden from people, irresistible to bots. */}
                   <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 opacity-0" />
                 </Step>
+
+                <Ticket className="lg:hidden" t={ticket} />
 
                 {error && <motion.p initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-300" role="alert">{error}</motion.p>}
 

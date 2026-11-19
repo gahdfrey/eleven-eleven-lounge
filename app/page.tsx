@@ -5,7 +5,15 @@ import { display } from "@/lib/fonts";
 import { SITE, upcomingNights } from "@/lib/site";
 import { SiteShell } from "@/components/site/SiteShell";
 import { Hero } from "@/components/site/Hero";
-import { About, Events, Experience, Faq, MenuTeaser, Nights, SiteFooter } from "@/components/site/Sections";
+import {
+  About,
+  Events,
+  Experience,
+  Faq,
+  MenuTeaser,
+  Nights,
+  SiteFooter,
+} from "@/components/site/Sections";
 import { Reserve } from "@/components/site/Reserve";
 import { Space } from "@/components/site/Space";
 
@@ -32,8 +40,23 @@ export default async function Home() {
           <Space />
           <Experience />
           <MenuTeaser menu={menu} />
-          <Reserve nights={nights.map((n) => ({ date: n.date, title: n.night.title, dayName: n.night.dayName, day: n.night.day }))} />
-          <Events events={events.map((e) => ({ id: e.id, title: e.title, description: e.description, startsAt: e.startsAt.toISOString(), entry: e.entry }))} />
+          <Reserve
+            nights={nights.map((n) => ({
+              date: n.date,
+              title: n.night.title,
+              dayName: n.night.dayName,
+              day: n.night.day,
+            }))}
+          />
+          <Events
+            events={events.map((e) => ({
+              id: e.id,
+              title: e.title,
+              description: e.description,
+              startsAt: e.startsAt.toISOString(),
+              entry: e.entry,
+            }))}
+          />
           <Faq />
         </main>
         <SiteFooter year={new Date().getFullYear()} />

@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3, CalendarDays, ClipboardList, LayoutDashboard, Package, PlusCircle, QrCode, Receipt, ScrollText, UserCog, Users, Wallet,
+  BarChart3, CalendarCheck, CalendarDays, ClipboardList, LayoutDashboard, Package, PlusCircle, QrCode, Receipt, ScrollText, UserCog, Users, Wallet,
 } from "lucide-react";
 import { cx } from "../ui";
 
-const ICONS = { BarChart3, CalendarDays, ClipboardList, LayoutDashboard, Package, PlusCircle, QrCode, Receipt, ScrollText, UserCog, Users, Wallet };
+const ICONS = { BarChart3, CalendarCheck, CalendarDays, ClipboardList, LayoutDashboard, Package, PlusCircle, QrCode, Receipt, ScrollText, UserCog, Users, Wallet };
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS };
 export type NavSection = { title?: string; items: NavItem[] };
 

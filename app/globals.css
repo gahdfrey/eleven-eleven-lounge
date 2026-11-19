@@ -11,6 +11,7 @@
   --color-accent-strong: #e2b95c;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-syncopate);
 }
 
 :root {
@@ -48,4 +49,18 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 @media (prefers-reduced-motion: reduce) {
   .drawer-in { animation: none; }
+}
+
+/* ── Public website ───────────────────────────────────────────────────────── */
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+.marquee-track { animation: marquee 32s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
+
+/* Hide the system cursor where the custom one is shown (fine pointers only). */
+@media (pointer: fine) {
+  .site-cursor-on, .site-cursor-on a, .site-cursor-on button, .site-cursor-on [role="button"] { cursor: none; }
+  .site-cursor-on input, .site-cursor-on textarea, .site-cursor-on select { cursor: auto; }
 }

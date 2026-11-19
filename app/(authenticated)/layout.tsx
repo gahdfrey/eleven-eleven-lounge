@@ -26,6 +26,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
         { href: "/orders/new", label: "New order", icon: "PlusCircle" },
         { href: "/orders", label: "Live orders", icon: "ClipboardList" },
         { href: "/bills", label: manager ? "All bills" : "My bills", icon: "Receipt" },
+        { href: "/reservations", label: "Reservations", icon: "CalendarCheck" },
       ],
     },
   ];

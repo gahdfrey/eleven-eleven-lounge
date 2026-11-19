@@ -6,6 +6,14 @@ export function lagosDateString(d = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(d); // YYYY-MM-DD
 }
 
+/**
+ * The venue's current night (YYYY-MM-DD). Until 6 AM it's still last night:
+ * at 1:30 AM on Saturday, "tonight" is Friday.
+ */
+export function currentNight(d = new Date()) {
+  return lagosDateString(new Date(d.getTime() - 6 * 3600_000));
+}
+
 /** Start of a Lagos calendar day (YYYY-MM-DD) as a Date. */
 export function startOfLagosDay(day: string) {
   return new Date(`${day}T00:00:00${OFFSET}`);

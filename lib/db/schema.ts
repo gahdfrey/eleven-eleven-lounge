@@ -269,6 +269,54 @@ export const events = pgTable(
   (t) => [index("events_starts_at_idx").on(t.startsAt), index("events_updated_idx").on(t.updatedAt)],
 );
 
+// ─── Reservations ───────────────────────────────────────────────────────────
+
+export const RESERVATION_STATUSES = ["pending", "confirmed", "seated", "completed", "cancelled", "no_show"] as const;
+export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
+export const SEATING_OPTIONS = ["standard", "vip", "booth", "bar"] as const;
+export type Seating = (typeof SEATING_OPTIONS)[number];
+
+/**
+ * A table booking, from the website form or entered by staff (phone/walk-up).
+ * `night` + `arrivalTime` are venue-local and kept as text: a 1:00 AM arrival
+ * on night 2026-11-20 belongs to Friday night, not Saturday.
+ */
+export const reservations = pgTable(
+  "reservations",
+  {
+    id: serial("id").primaryKey(),
+    /** Short code the guest quotes at the door, e.g. "R7KX2Q". */
+    reference: text("reference").notNull(),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    email: text("email"),
+    /** YYYY-MM-DD: the night of the booking. */
+    night: text("night").notNull(),
+    /** HH:MM, 24h. Times before noon are after midnight on that night. */
+    arrivalTime: text("arrival_time").notNull(),
+    partySize: integer("party_size").notNull(),
+    seating: text("seating").$type<Seating>().notNull().default("standard"),
+    occasion: text("occasion"),
+    notes: text("notes"),
+    status: text("status").$type<ReservationStatus>().notNull().default("pending"),
+    source: text("source").$type<"website" | "staff">().notNull().default("website"),
+    tableId: integer("table_id").references(() => loungeTables.id),
+    /** Who last confirmed/seated/cancelled it. */
+    handledById: integer("handled_by_id").references(() => users.id),
+    staffNote: text("staff_note"),
+    /** Random id from the guest's browser, so a double-submit can't create two bookings. */
+    clientRef: text("client_ref"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("reservations_reference_unique").on(t.reference),
+    uniqueIndex("reservations_client_ref_unique").on(t.clientRef),
+    index("reservations_night_idx").on(t.night, t.status),
+    index("reservations_updated_idx").on(t.updatedAt),
+  ],
+);
+
+export type Reservation = typeof reservations.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Bill = typeof bills.$inferSelect;

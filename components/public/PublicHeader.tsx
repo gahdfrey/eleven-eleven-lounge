@@ -11,6 +11,7 @@ export function PublicHeader({ right }: { right?: React.ReactNode }) {
         <nav className="flex items-center gap-1 text-sm">
           <Link href="/menu" className="rounded-md px-3 py-1.5 text-zinc-300 hover:bg-raised hover:text-white">Menu</Link>
           <Link href="/events" className="rounded-md px-3 py-1.5 text-zinc-300 hover:bg-raised hover:text-white">Events</Link>
+          <Link href="/#reserve" className="ml-1 rounded-full bg-accent px-3 py-1.5 font-medium text-black hover:bg-accent-strong">Reserve</Link>
           {right}
         </nav>
       </div>

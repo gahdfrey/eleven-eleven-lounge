@@ -112,7 +112,7 @@ export function SiteNav() {
   );
 }
 
-/** A gold ring that trails the mouse and swells over links and buttons. Hidden on touch screens. */
+/** An accent ring that trails the mouse and swells over links and buttons. Hidden on touch screens. */
 export function Cursor() {
   const x = useSpring(-100, { stiffness: 500, damping: 40, mass: 0.4 });
   const y = useSpring(-100, { stiffness: 500, damping: 40, mass: 0.4 });

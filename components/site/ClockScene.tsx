@@ -29,20 +29,20 @@ export default function ClockScene({ progressRef }: { progressRef: React.RefObje
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 50);
     camera.position.set(0, 0, 7.5);
 
-    const gold = new THREE.MeshStandardMaterial({ color: 0xd4a84b, metalness: 0.9, roughness: 0.28 });
+    const metal = new THREE.MeshStandardMaterial({ color: 0xc840e0, metalness: 0.9, roughness: 0.28 });
     const dark = new THREE.MeshStandardMaterial({ color: 0x0b0b0c, metalness: 0.5, roughness: 0.6 });
     const clock = new THREE.Group();
 
     // Bezel, face and tick marks.
-    clock.add(new THREE.Mesh(new THREE.TorusGeometry(2, 0.07, 32, 160), gold));
-    clock.add(new THREE.Mesh(new THREE.TorusGeometry(2.22, 0.015, 16, 160), gold));
+    clock.add(new THREE.Mesh(new THREE.TorusGeometry(2, 0.07, 32, 160), metal));
+    clock.add(new THREE.Mesh(new THREE.TorusGeometry(2.22, 0.015, 16, 160), metal));
     const face = new THREE.Mesh(new THREE.CylinderGeometry(1.96, 1.96, 0.08, 96), dark);
     face.rotation.x = Math.PI / 2;
     face.position.z = -0.06;
     clock.add(face);
     for (let i = 0; i < 60; i++) {
       const major = i % 5 === 0;
-      const tick = new THREE.Mesh(new THREE.BoxGeometry(major ? 0.05 : 0.018, major ? 0.26 : 0.1, 0.03), gold);
+      const tick = new THREE.Mesh(new THREE.BoxGeometry(major ? 0.05 : 0.018, major ? 0.26 : 0.1, 0.03), metal);
       const a = (i / 60) * Math.PI * 2;
       const r = major ? 1.7 : 1.76;
       tick.position.set(Math.sin(a) * r, Math.cos(a) * r, 0.02);
@@ -53,7 +53,7 @@ export default function ClockScene({ progressRef }: { progressRef: React.RefObje
     // Hands pivot at the centre.
     const hand = (len: number, width: number, z: number) => {
       const pivot = new THREE.Group();
-      const m = new THREE.Mesh(new THREE.BoxGeometry(width, len, 0.04), gold);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(width, len, 0.04), metal);
       m.position.y = len / 2 - 0.12;
       m.position.z = z;
       pivot.add(m);
@@ -62,13 +62,13 @@ export default function ClockScene({ progressRef }: { progressRef: React.RefObje
     };
     const hourHand = hand(1.05, 0.09, 0.06);
     const minuteHand = hand(1.5, 0.05, 0.1);
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.08, 32), gold);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.08, 32), metal);
     cap.rotation.x = Math.PI / 2;
     cap.position.z = 0.14;
     clock.add(cap);
     scene.add(clock);
 
-    // Gold dust orbiting the clock.
+    // Violet dust orbiting the clock.
     const DUST = 600;
     const dustPos = new Float32Array(DUST * 3);
     for (let i = 0; i < DUST; i++) {
@@ -78,15 +78,15 @@ export default function ClockScene({ progressRef }: { progressRef: React.RefObje
     }
     const dustGeo = new THREE.BufferGeometry();
     dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
-    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xd4a84b, size: 0.03, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xd466ea, size: 0.03, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
     dust.rotation.x = 0.5;
     scene.add(dust);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.35));
-    const key = new THREE.PointLight(0xfff1d0, 40, 30);
+    const key = new THREE.PointLight(0xf6dcff, 40, 30);
     key.position.set(3, 3, 5);
     scene.add(key);
-    const rim = new THREE.PointLight(0xd4a84b, 25, 30);
+    const rim = new THREE.PointLight(0x5500bb, 30, 30);
     rim.position.set(-4, -2, 2);
     scene.add(rim);
 

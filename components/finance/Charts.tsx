@@ -8,7 +8,7 @@ import { formatNaira } from "@/lib/money";
  * (no gradients), thin marks, a recessive grid, and a hover tooltip on every mark.
  * Categorical colours are assigned to an entity, never to its rank.
  */
-const ACCENT = "#d4a84b";
+const ACCENT = "#c840e0";
 const GRID = "#232326";
 const AXIS_TEXT = "#8b8b93";
 

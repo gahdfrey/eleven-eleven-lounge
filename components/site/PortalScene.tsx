@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
 /**
- * The hero's 3D scene: a gold spiral galaxy swirling around a pair of portal
+ * The hero's 3D scene: a violet spiral galaxy swirling around a pair of portal
  * rings, inside a starfield. The mouse tilts the camera; scrolling flies the
  * camera through the portal. Rendering pauses when the hero is off screen or
  * the tab is hidden, and holds still for people who prefer reduced motion.
@@ -74,9 +74,9 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
     const positions = new Float32Array(COUNT * 3);
     const colors = new Float32Array(COUNT * 3);
     const scales = new Float32Array(COUNT);
-    const gold = new THREE.Color("#d4a84b");
-    const warm = new THREE.Color("#fff1d0");
-    const ember = new THREE.Color("#8a5a1c");
+    const accent = new THREE.Color("#c840e0");
+    const warm = new THREE.Color("#f6dcff");
+    const ember = new THREE.Color("#5500bb");
     for (let i = 0; i < COUNT; i++) {
       const r = Math.pow(Math.random(), 1.6) * RADIUS + 0.9;
       const branch = ((i % ARMS) / ARMS) * Math.PI * 2;
@@ -87,7 +87,7 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
       positions[i * 3] = Math.cos(branch + spin) * r + spread;
       positions[i * 3 + 1] = spreadY;
       positions[i * 3 + 2] = Math.sin(branch + spin) * r + spreadZ;
-      const c = (r < 2.4 ? warm : Math.random() < 0.8 ? gold : ember).clone().lerp(ember, Math.min(1, r / RADIUS) * 0.5);
+      const c = (r < 2.4 ? warm : Math.random() < 0.75 ? accent : ember).clone().lerp(ember, Math.min(1, r / RADIUS) * 0.5);
       colors.set([c.r, c.g, c.b], i * 3);
       scales[i] = 0.4 + Math.random() * 1.1;
     }
@@ -120,11 +120,11 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
     const stars = new THREE.Points(starGeo, starMat);
     scene.add(stars);
 
-    // ── The portal: two thin gold rings, an inner halo of ticks, and a black core ─
+    // ── The portal: two thin rings, an inner halo of ticks, and a black core ─
     const portal = new THREE.Group();
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0xd4a84b });
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xc840e0 });
     const ringA = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.012, 16, 220), ringMat);
-    const ringB = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.006, 16, 220), new THREE.MeshBasicMaterial({ color: 0xe2b95c, transparent: true, opacity: 0.6 }));
+    const ringB = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.006, 16, 220), new THREE.MeshBasicMaterial({ color: 0xd466ea, transparent: true, opacity: 0.6 }));
     const core = new THREE.Mesh(new THREE.CircleGeometry(1.5, 96), new THREE.MeshBasicMaterial({ color: 0x000000 }));
     // 12 clock ticks around the ring (11:11 is a time, after all).
     const ticks = new THREE.Group();
@@ -136,7 +136,29 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
       tick.rotation.z = -a;
       ticks.add(tick);
     }
-    portal.add(core, ringA, ringB, ticks);
+    // Clock hands reading 11:11. They sweep round on load and settle there.
+    const handMat = new THREE.MeshBasicMaterial({ color: 0xf6dcff });
+    const makeHand = (length: number, width: number, z: number) => {
+      const pivot = new THREE.Group();
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(width, length, 0.01), handMat);
+      bar.position.set(0, length / 2 - 0.08, z); // a short tail past the centre, like a real hand
+      pivot.add(bar);
+      return pivot;
+    };
+    const hourHand = makeHand(0.78, 0.055, 0.03);
+    const minuteHand = makeHand(1.12, 0.03, 0.04);
+    const cap = new THREE.Mesh(new THREE.CircleGeometry(0.06, 32), ringMat);
+    cap.position.z = 0.05;
+    // Angles clockwise from 12: minute hand at 11 minutes (66°), hour hand just past 11 (335.5°).
+    const MINUTE_ANGLE = THREE.MathUtils.degToRad(66);
+    const HOUR_ANGLE = THREE.MathUtils.degToRad(335.5);
+    const setTime = (sweep: number) => {
+      // sweep 0 → resting at 11:11; 1 → two extra turns of the minute hand still to go.
+      minuteHand.rotation.z = -(MINUTE_ANGLE + sweep * Math.PI * 4);
+      hourHand.rotation.z = -(HOUR_ANGLE + sweep * (Math.PI * 4) / 12);
+    };
+    setTime(reduced ? 0 : 1);
+    portal.add(core, ringA, ringB, ticks, hourHand, minuteHand, cap);
     portal.position.set(0, 0.2, 0);
     scene.add(portal);
 
@@ -184,7 +206,9 @@ export default function PortalScene({ progressRef }: { progressRef: React.RefObj
       ringA.rotation.y = t * 0.25 * speed;
       ringB.rotation.x = t * 0.18 * speed;
       ringB.rotation.y = -t * 0.12 * speed + 0.6;
-      ticks.rotation.z = -t * 0.08 * speed;
+      // Hands sweep into place after the title appears (0.8s), taking 2.4s to settle on 11:11.
+      const s = Math.min(1, Math.max(0, (t - 0.8) / 2.4));
+      setTime(Math.pow(1 - s, 3));
       galaxyMat.uniforms.uTime.value = t;
       starMat.uniforms.uTime.value = t;
 

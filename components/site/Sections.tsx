@@ -100,7 +100,7 @@ export function Nights({ next }: { next: Record<number, string> }) {
       transition={{ duration: 0.9, ease: EASE, delay: i * 0.08 }}
       className="group relative flex min-h-[26rem] w-full shrink-0 flex-col justify-between overflow-hidden rounded-3xl border border-line bg-surface p-8 transition-colors duration-500 hover:border-accent/60 lg:h-[min(32rem,calc(100vh-17rem))] lg:min-h-[22rem] lg:w-[26rem]"
     >
-      <span aria-hidden="true" className="pointer-events-none absolute -right-4 -top-10 font-display text-[11rem] font-bold leading-none text-transparent transition-transform duration-700 [-webkit-text-stroke:1px_rgba(212,168,75,0.35)] group-hover:-translate-y-3 group-hover:scale-105">
+      <span aria-hidden="true" className="pointer-events-none absolute -right-4 -top-10 font-display text-[11rem] font-bold leading-none text-transparent transition-transform duration-700 [-webkit-text-stroke:1px_rgba(200,64,224,0.4)] group-hover:-translate-y-3 group-hover:scale-105">
         {n.numeral}
       </span>
       <div className="relative">
@@ -368,7 +368,7 @@ export function SiteFooter({ year }: { year: number }) {
             <p className="flex flex-wrap gap-x-3 gap-y-1 pt-2 text-xs text-muted">{SITE.hashtags.map((h) => <span key={h}>{h}</span>)}</p>
           </div>
         </div>
-        <p aria-hidden="true" className="mt-16 select-none text-center font-display text-[24vw] font-bold leading-[0.8] text-transparent [-webkit-text-stroke:1px_rgba(212,168,75,0.35)] lg:text-[18rem]">11:11</p>
+        <p aria-hidden="true" className="mt-16 select-none text-center font-display text-[24vw] font-bold leading-[0.8] text-transparent [-webkit-text-stroke:1px_rgba(200,64,224,0.4)] lg:text-[18rem]">11:11</p>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line py-6 text-xs text-muted">
           <p>© {year} {SITE.fullName}</p>
           <Link href="/login" className="hover:text-white">Staff login</Link>

@@ -105,8 +105,8 @@ export function Reserve({ nights }: { nights: NightOption[] }) {
             {done ? (
               <motion.div key="done" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, ease: EASE }} className="rounded-3xl border border-accent/40 bg-surface p-8 sm:p-12">
                 <svg viewBox="0 0 52 52" className="h-16 w-16" aria-hidden="true">
-                  <motion.circle cx="26" cy="26" r="24" fill="none" stroke="#d4a84b" strokeWidth="2" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, ease: EASE }} />
-                  <motion.path d="M15 27 l7 7 l15 -16" fill="none" stroke="#d4a84b" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.5, delay: 0.6, ease: EASE }} />
+                  <motion.circle cx="26" cy="26" r="24" fill="none" stroke="#c840e0" strokeWidth="2" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, ease: EASE }} />
+                  <motion.path d="M15 27 l7 7 l15 -16" fill="none" stroke="#c840e0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.5, delay: 0.6, ease: EASE }} />
                 </svg>
                 <h3 className="mt-8 font-display text-3xl font-bold uppercase text-white">Request received</h3>
                 <p className="mt-4 text-zinc-400">
